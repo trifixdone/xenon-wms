@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Xenon Attendance Kiosk</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#1c0f33; --panel:#2a1750; --line:#43307a;
+    --ink:#ffffff; --dim:#b9a8e6;
+    --glow:#c9a6ff; --violet:#9d6bff;
+    --ok:#3ddc84; --warn:#ffb547; --bad:#ff6b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(1200px 600px at 50% -200px, #3b1f6e 0%, var(--bg) 60%);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;min-height:100vh;padding:14px;gap:14px;
+  }
+  header{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
+  .brand{font-weight:800;letter-spacing:.12em;font-size:15px;text-transform:uppercase}
+  .brand span{color:var(--glow)}
+  #clock{font-variant-numeric:tabular-nums;font-size:15px;color:var(--dim)}
+  /* duty board — the "xenon tube" */
+  .board{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;
+  }
+  .board h2{
+    font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+    padding-bottom:8px;margin-bottom:10px;position:relative;
+  }
+  .board h2::after{
+    content:"";position:absolute;left:0;bottom:0;height:2px;width:120px;border-radius:2px;
+    background:linear-gradient(90deg,var(--glow),var(--violet));
+    box-shadow:0 0 12px var(--glow);
+  }
+  .duty{display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px dashed var(--line);font-size:17px}
+  .duty:last-child{border-bottom:0}
+  .duty .who{font-weight:700}
+  .duty .what{color:var(--glow);font-weight:600}
+  .duty .stat{font-size:12px;margin-left:8px;color:var(--dim)}
+  .duty .stat.in{color:var(--ok)} .duty .stat.out{color:var(--dim)}
+  .duty .stat.late{color:var(--warn)} .duty .stat.leave{color:var(--violet)}
+  .holiday{color:var(--warn);font-size:18px;font-weight:700;text-align:center;padding:10px 0}
+  /* scanner */
+  .scanwrap{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;flex:1;display:flex;flex-direction:column;gap:10px}
+  #reader{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden}
+  #reader video{border-radius:12px}
+  .hint{color:var(--dim);text-align:center;font-size:14px}
+  /* result banner */
+  #banner{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(20,8,40,.93);z-index:50;padding:24px;text-align:center;
+  }
+  #banner .card{max-width:460px;width:100%;border-radius:20px;padding:34px 22px;border:1px solid var(--line)}
+  #banner .big{font-size:44px;font-weight:800;margin-bottom:8px}
+  #banner .name{font-size:30px;font-weight:700;margin-bottom:6px}
+  #banner .sub{font-size:18px;color:var(--dim)}
+  .b-ok{background:linear-gradient(180deg,rgba(61,220,132,.16),transparent);}
+  .b-ok .big{color:var(--ok)}
+  .b-warn{background:linear-gradient(180deg,rgba(255,181,71,.16),transparent);}
+  .b-warn .big{color:var(--warn)}
+  .b-bad{background:linear-gradient(180deg,rgba(255,107,107,.16),transparent);}
+  .b-bad .big{color:var(--bad)}
+  footer{color:var(--dim);font-size:11px;text-align:center;letter-spacing:.06em}
+  #err{color:var(--bad);text-align:center;font-size:14px;display:none;padding:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">XENON <span>ATTENDANCE</span></div>
+  <div id="clock">--:--</div>
+</header>
+
+<section class="board">
+  <h2 id="boardTitle">Today's Duties</h2>
+  <div id="duties"><div class="hint">Loading…</div></div>
+</section>
+
+<section class="scanwrap">
+  <div id="reader"></div>
+  <div class="hint">Show your QR card to the camera</div>
+  <div id="err"></div>
+</section>
+
+<footer>Dream ICT · Kasup Devendra · 071 8018 809</footer>
+
+<div id="banner"><div class="card" id="bannerCard">
+  <div class="big" id="bBig"></div>
+  <div class="name" id="bName"></div>
+  <div class="sub" id="bSub"></div>
+</div></div>
+
+<script>
+/* ============ CONFIG — paste your Apps Script Web App URL below ============ */
+const API_URL = "https://script.google.com/macros/s/AKfycbxWGrafPkD3sgT5br2mcy7oKB2lxQARL3Uq1lJ4Xz9L9WBbS0-2X97oKHyMww3OVTeX/exec";
+/* =========================================================================== */
+
+const $ = id => document.getElementById(id);
+let lastScan = { code: null, t: 0 };
+let busy = false;
+
+function api(payload){
+  return fetch(API_URL, { method:"POST", body: JSON.stringify(payload) })
+    .then(r => r.json());
+}
+
+/* ---- clock ---- */
+function tick(){
+  const n = new Date();
+  $("clock").textContent = n.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}) +
+    "  " + n.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+}
+setInterval(tick, 15000); tick();
+
+/* ---- duty board ---- */
+async function loadBoard(){
+  try{
+    const d = await api({ action:"board" });
+    if(!d.ok) return;
+    const box = $("duties");
+    if(d.duties.holiday){
+      box.innerHTML = '<div class="holiday">🌙 Holiday — ' + esc(d.duties.holiday) + '</div>';
+      return;
+    }
+    const leaves = {}; (d.leaves||[]).forEach(l => leaves[l.workerId] = l.type);
+    box.innerHTML = d.duties.list.map(x=>{
+      const a = d.attendance[x.workerId];
+      let stat = '<span class="stat">not in yet</span>';
+      if(leaves[x.workerId]) stat = '<span class="stat leave">Leave ('+esc(leaves[x.workerId])+')</span>';
+      else if(a && a.outTime) stat = '<span class="stat out">OUT '+a.outTime+'</span>';
+      else if(a && a.inTime) stat = '<span class="stat '+(a.late?'late':'in')+'">IN '+a.inTime+(a.late?' (Late)':'')+'</span>';
+      return '<div class="duty"><span class="who">'+esc(x.name)+stat+'</span><span class="what">'+esc(x.duty)+'</span></div>';
+    }).join("");
+  }catch(e){ /* silent; retried on interval */ }
+}
+setInterval(loadBoard, 60000);
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---- feedback ---- */
+function beep(ok){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = ok ? 880 : 220; g.gain.value = .15;
+    o.start(); o.stop(ctx.currentTime + .18);
+  }catch(e){}
+}
+function banner(cls, big, name, sub){
+  const b = $("banner"), c = $("bannerCard");
+  c.className = "card " + cls;
+  $("bBig").textContent = big; $("bName").textContent = name; $("bSub").textContent = sub;
+  b.style.display = "flex";
+  setTimeout(()=>{ b.style.display = "none"; }, 3200);
+}
+
+/* ---- scanning ---- */
+async function onScan(code){
+  const now = Date.now();
+  if(busy) return;
+  if(lastScan.code === code && now - lastScan.t < 15000) return; // ignore repeats
+  lastScan = { code, t: now };
+  busy = true;
+  try{
+    const r = await api({ action:"scan", code });
+    if(!r.ok){ beep(false); banner("b-bad","✕", r.message || "Scan failed", "Please try again"); return; }
+    if(r.event === "IN"){
+      beep(true);
+      banner(r.late ? "b-warn" : "b-ok", "✓ IN", r.name, r.time + (r.late ? "  ·  Late" : "  ·  Good morning!"));
+    } else if(r.event === "OUT"){
+      beep(true);
+      banner(r.early ? "b-warn" : "b-ok", "✓ OUT", r.name, r.time + (r.early ? "  ·  Early out" : "  ·  Good evening!"));
+    } else if(r.event === "ALREADY_IN"){
+      beep(true); banner("b-ok","✓", r.name, "Already checked in at " + r.time);
+    } else if(r.event === "DONE"){
+      beep(false); banner("b-warn","!", r.name, "Already IN " + r.inTime + " · OUT " + r.outTime);
+    }
+    loadBoard();
+  }catch(e){
+    beep(false); banner("b-bad","✕","No connection","Check internet and try again");
+  }finally{
+    setTimeout(()=>{ busy = false; }, 1200);
+  }
+}
+
+function startScanner(){
+  const scanner = new Html5Qrcode("reader");
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 8, qrbox: { width: 220, height: 220 } },
+    text => onScan(text.trim()),
+    () => {}
+  ).catch(err => {
+    const e = $("err");
+    e.style.display = "block";
+    e.textContent = "Camera not available: " + err + " — open this page over HTTPS and allow camera access.";
+  });
+}
+
+/* refresh board at midnight */
+(function(){
+  const now = new Date();
+  const ms = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 30) - now;
+  setTimeout(()=>{ loadBoard(); setInterval(loadBoard, 86400000); }, ms);
+})();
+
+if(API_URL.indexOf("PASTE_") === 0){
+  $("err").style.display = "block";
+  $("err").textContent = "Setup needed: paste your Apps Script URL into API_URL inside kiosk.html";
+} else {
+  loadBoard();
+  startScanner();
+}
+</script>
+</body>
+</html>

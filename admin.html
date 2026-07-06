@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xenon WMS — Admin</title>
+<style>
+  :root{
+    --ink:#241539; --dim:#6f6390; --bg:#f8f6fd; --card:#ffffff; --line:#e7e0f5;
+    --brand:#5b21b6; --accent:#8b5cf6; --glow:#a855f7;
+    --ok:#0f9d58; --warn:#c77700; --bad:#d23c3c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px}
+  .wrap{max-width:980px;margin:0 auto;padding:14px}
+  header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .brand{font-weight:800;letter-spacing:.1em;color:var(--brand)}
+  .brand b{color:var(--glow)}
+  input,select,button,textarea{font:inherit}
+  input,select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;max-width:100%}
+  button{padding:8px 14px;border:0;border-radius:8px;background:var(--brand);color:#fff;font-weight:600;cursor:pointer}
+  button.ghost{background:#fff;color:var(--brand);border:1px solid var(--line)}
+  button.small{padding:4px 10px;font-size:13px}
+  button.danger{background:var(--bad)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  h3{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+  nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px}
+  nav button{white-space:nowrap;background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:600}
+  nav button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+  .tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600}
+  .t-ok{background:#e4f6ec;color:var(--ok)} .t-warn{background:#fdf1de;color:var(--warn)}
+  .t-bad{background:#fbe7e7;color:var(--bad)} .t-vio{background:#eeeafd;color:var(--accent)}
+  .t-dim{background:#eef1f6;color:var(--dim)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+  .stat{font-size:13px;color:var(--dim)}
+  .netbox{font-size:22px;font-weight:800;color:var(--brand)}
+  .muted{color:var(--dim)}
+  .scroll{overflow-x:auto}
+  #loginView{max-width:340px;margin:12vh auto;text-align:center}
+  #loginView input{width:100%;text-align:center;font-size:22px;letter-spacing:.4em;margin:12px 0}
+  #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+         padding:10px 18px;border-radius:10px;display:none;z-index:60;font-size:14px}
+  #busy{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--glow),var(--accent));display:none;z-index:70}
+  footer{color:var(--dim);font-size:12px;text-align:center;padding:14px}
+  /* printable slip */
+  #slip{display:none}
+  @media print{
+    body *{visibility:hidden} #slip,#slip *{visibility:visible}
+    #slip{display:block;position:absolute;top:0;left:0;width:100%;padding:30px;font-size:14px}
+    #slip table{width:100%;border-collapse:collapse} #slip td,#slip th{border:1px solid #999;padding:8px}
+  }
+</style>
+</head>
+<body>
+<div id="busy"></div>
+
+<div id="loginView" class="wrap">
+  <div class="card">
+    <div class="brand" style="font-size:18px">XENON <b>WMS</b></div>
+    <p class="muted" style="margin-top:6px">Admin access</p>
+    <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN">
+    <button style="width:100%" onclick="login()">Open dashboard</button>
+    <p id="loginErr" style="color:var(--bad);margin-top:10px;display:none">Wrong PIN</p>
+  </div>
+</div>
+
+<div id="appView" class="wrap" style="display:none">
+  <header>
+    <div class="brand">XENON <b>WMS</b> · Admin</div>
+    <div class="row">
+      <input type="month" id="monthPick" onchange="refresh()">
+      <button class="ghost small" onclick="refresh()">↻</button>
+    </div>
+  </header>
+
+  <nav id="tabs"></nav>
+  <main id="view"></main>
+  <footer>Dream ICT | Kasup Devendra | 071 8018 809</footer>
+</div>
+
+<div id="toast"></div>
+<div id="slip"></div>
+
+<script>
+/* ============ CONFIG — paste your Apps Script Web App URL below ============ */
+const API_URL = "https://script.google.com/macros/s/AKfycbxWGrafPkD3sgT5br2mcy7oKB2lxQARL3Uq1lJ4Xz9L9WBbS0-2X97oKHyMww3OVTeX/exec";
+/* =========================================================================== */
+
+const $ = id => document.getElementById(id);
+let PIN = sessionStorage.getItem("xwms_pin") || "";
+let D = null;               // dashboard data
+let TAB = "today";
+const TABS = [["today","Today"],["att","Attendance"],["leave","Leaves & Holidays"],
+              ["duty","Duty Rotation"],["adv","Advances"],["clean","Cleaning"],
+              ["sal","Salary"],["set","Settings"]];
+
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rs = n => "Rs. " + Number(n||0).toLocaleString("en-LK",{minimumFractionDigits:2});
+const toast = m => { const t=$("toast"); t.textContent=m; t.style.display="block"; setTimeout(()=>t.style.display="none",2200); };
+
+async function api(payload){
+  $("busy").style.display="block";
+  try{
+    const r = await fetch(API_URL,{method:"POST",body:JSON.stringify(Object.assign({pin:PIN},payload))});
+    return await r.json();
+  }catch(e){
+    return {ok:false,message:"No connection"};
+  }finally{ $("busy").style.display="none"; }
+}
+
+function curMonth(){ return $("monthPick").value || new Date().toISOString().slice(0,7); }
+
+async function login(){
+  PIN = $("pinInput").value.trim();
+  const r = await fetch(API_URL,{method:"POST",body:JSON.stringify({action:"dashboard",pin:PIN,month:new Date().toISOString().slice(0,7)})}).then(x=>x.json()).catch(()=>({ok:false}));
+  if(!r.ok){ $("loginErr").style.display="block"; return; }
+  sessionStorage.setItem("xwms_pin",PIN);
+  D = r;
+  $("loginView").style.display="none"; $("appView").style.display="block";
+  $("monthPick").value = r.month;
+  drawTabs(); render();
+}
+
+async function refresh(){
+  const r = await api({action:"dashboard",month:curMonth()});
+  if(!r.ok){ toast(r.message||"Failed to load"); return; }
+  D = r; render();
+}
+
+function drawTabs(){
+  $("tabs").innerHTML = TABS.map(([k,l])=>`<button id="tab-${k}" onclick="go('${k}')">${l}</button>`).join("");
+  mark();
+}
+function mark(){ TABS.forEach(([k])=>$("tab-"+k).className = (k===TAB?"on":"")); }
+function go(t){ TAB=t; mark(); render(); }
+
+const perm = () => D.workers.filter(w=>w.type==="permanent");
+const wname = id => (D.workers.find(w=>w.id===id)||{}).name || id;
+function daysInMonth(m){ const y=+m.slice(0,4), mo=+m.slice(5,7); return new Date(y,mo,0).getDate(); }
+const dstr = (m,d) => m + "-" + String(d).padStart(2,"0");
+function attOf(date,wid){ return D.attendance.find(a=>a.date===date && a.workerId===wid); }
+function leaveOf(date,wid){ return D.leaves.find(l=>l.date===date && l.workerId===wid); }
+function holOf(date){ return (D.holidays.find(h=>h.date===date)||{}).name; }
+
+/* ------------------------------------------------ render ------------------------------------------------ */
+function render(){
+  if(!D) return;
+  const v = $("view");
+  if(TAB==="today") v.innerHTML = vToday();
+  if(TAB==="att")   v.innerHTML = vAtt();
+  if(TAB==="leave") v.innerHTML = vLeave();
+  if(TAB==="duty")  v.innerHTML = vDuty();
+  if(TAB==="adv")   v.innerHTML = vAdv();
+  if(TAB==="clean") v.innerHTML = vClean();
+  if(TAB==="sal")   v.innerHTML = vSal();
+  if(TAB==="set")   v.innerHTML = vSet();
+}
+
+/* ---- Today ---- */
+function vToday(){
+  const today = new Date().toISOString().slice(0,10);
+  const du = D.duties[today];
+  let dutyHtml = "";
+  if(du && du.holiday) dutyHtml = `<span class="tag t-warn">Holiday — ${esc(du.holiday)}</span>`;
+  else if(du) dutyHtml = `<table><tr><th>Worker</th><th>Duty</th><th>In</th><th>Out</th></tr>` +
+    du.list.map(x=>{
+      const a = attOf(today,x.workerId), l = leaveOf(today,x.workerId);
+      return `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.duty)}</td>
+        <td>${l?`<span class="tag t-vio">Leave (${esc(l.type)})</span>`:(a&&a.inTime?a.inTime+(a.late?' <span class="tag t-warn">Late</span>':""):'—')}</td>
+        <td>${a&&a.outTime?a.outTime+(a.early?' <span class="tag t-warn">Early</span>':""):'—'}</td></tr>`;
+    }).join("") + "</table>";
+  else dutyHtml = `<span class="muted">Change month picker to current month to see today.</span>`;
+
+  const cleanedToday = D.cleanerDays.some(c=>c.date===today);
+  return `
+  <div class="card"><h3>Today — ${today}</h3>${dutyHtml}</div>
+  <div class="card"><h3>Cleaning (contract)</h3>
+    <div class="row">
+      ${cleanedToday ? `<span class="tag t-ok">Cleaner attended today</span>
+        <button class="ghost small" onclick="delCleanDay('${today}')">Undo</button>`
+      : `<button onclick="addCleanDay('${today}')">Mark cleaner attended today</button>`}
+      <span class="stat">This month: <b>${D.cleanerDays.length}</b> day(s)</span>
+    </div>
+  </div>`;
+}
+
+/* ---- Attendance ---- */
+function vAtt(){
+  const m = D.month, n = daysInMonth(m), ws = perm();
+  let sum = {}; ws.forEach(w=>sum[w.id]={p:0,late:0,early:0,full:0,half:0});
+  let body = "";
+  for(let d=1; d<=n; d++){
+    const date = dstr(m,d), hol = holOf(date);
+    const wd = new Date(date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short"});
+    body += `<tr><td><b>${d}</b> <span class="muted">${wd}</span>${hol?`<br><span class="tag t-warn">${esc(hol)}</span>`:""}</td>` +
+      ws.map(w=>{
+        const a = attOf(date,w.id), l = leaveOf(date,w.id);
+        let cell = "";
+        if(l){ cell = `<span class="tag t-vio">${l.type==="half"?"½ day":"Leave"}</span>`; sum[w.id][l.type==="half"?"half":"full"]++; }
+        if(a){
+          sum[w.id].p++; if(a.late) sum[w.id].late++; if(a.early) sum[w.id].early++;
+          cell += ` ${a.inTime||"—"}${a.late?"<span class='tag t-warn'>L</span>":""} → ${a.outTime||"…"}${a.early?"<span class='tag t-warn'>E</span>":""}`;
+        }
+        if(!a && !l && !hol) cell = `<span class="muted">—</span>`;
+        return `<td>${cell} <button class="ghost small" onclick="editAtt('${date}','${w.id}')">✎</button></td>`;
+      }).join("") + "</tr>";
+  }
+  return `<div class="card"><h3>Attendance — ${m}</h3><div class="scroll">
+    <table><tr><th>Day</th>${ws.map(w=>`<th>${esc(w.name)}</th>`).join("")}</tr>${body}
+    <tr><td><b>Summary</b></td>${ws.map(w=>{
+      const s=sum[w.id];
+      return `<td class="stat">Present <b>${s.p}</b> · Late <b>${s.late}</b> · Early <b>${s.early}</b><br>Leave full <b>${s.full}</b> · half <b>${s.half}</b></td>`;
+    }).join("")}</tr></table></div>
+    <p class="stat" style="margin-top:8px">✎ = add or correct in/out times manually (forgot to scan, etc.). Clear both times to delete the record.</p></div>`;
+}
+
+async function editAtt(date, wid){
+  const a = attOf(date,wid) || {};
+  const inT = prompt(`${wname(wid)} — ${date}\nIN time (HH:MM, 24h). Empty = none:`, a.inTime||"");
+  if(inT===null) return;
+  const outT = prompt(`OUT time (HH:MM, 24h). Empty = none:`, a.outTime||"");
+  if(outT===null) return;
+  const r = await api({action:"editAttendance",date,workerId:wid,inTime:inT.trim(),outTime:outT.trim(),note:a.note||""});
+  r.ok ? (toast("Saved"), refresh()) : toast(r.message);
+}
+
+/* ---- Leaves & Holidays ---- */
+function vLeave(){
+  const ws = perm();
+  return `
+  <div class="card"><h3>Add leave</h3>
+    <div class="row">
+      <select id="lvW">${ws.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join("")}</select>
+      <input type="date" id="lvD" value="${new Date().toISOString().slice(0,10)}">
+      <select id="lvT"><option value="full">Full day</option><option value="half">Half day</option></select>
+      <input id="lvN" placeholder="Note (optional)" style="width:160px">
+      <button onclick="addLeave()">Add</button>
+    </div></div>
+  <div class="card"><h3>Leaves — ${D.month}</h3>
+    ${D.leaves.length? `<table><tr><th>Date</th><th>Worker</th><th>Type</th><th>Note</th><th></th></tr>`+
+      D.leaves.map(l=>`<tr><td>${l.date}</td><td>${esc(wname(l.workerId))}</td>
+        <td><span class="tag t-vio">${l.type==="half"?"Half day":"Full day"}</span></td><td>${esc(l.note)}</td>
+        <td><button class="ghost small" onclick="delLeave('${l.date}','${l.workerId}')">✕</button></td></tr>`).join("")+`</table>`
+      : `<p class="muted">No leaves this month.</p>`}</div>
+  <div class="card"><h3>Holidays (Poya, public, institute closed)</h3>
+    <div class="row" style="margin-bottom:10px">
+      <input type="date" id="hoD"><input id="hoN" placeholder="Name (e.g. Poson Poya)" style="width:180px">
+      <button onclick="addHoliday()">Add holiday</button>
+    </div>
+    ${D.holidays.length? `<table><tr><th>Date</th><th>Name</th><th></th></tr>`+
+      D.holidays.map(h=>`<tr><td>${h.date}</td><td>${esc(h.name)}</td>
+        <td><button class="ghost small" onclick="delHoliday('${h.date}')">✕</button></td></tr>`).join("")+`</table>`
+      : `<p class="muted">No holidays added yet.</p>`}
+    <p class="stat" style="margin-top:8px">Holidays are skipped by the duty rotation and are not counted as absent.</p></div>`;
+}
+async function addLeave(){ const r=await api({action:"addLeave",date:$("lvD").value,workerId:$("lvW").value,type:$("lvT").value,note:$("lvN").value}); r.ok?(toast("Leave added"),refresh()):toast(r.message); }
+async function delLeave(d,w){ const r=await api({action:"deleteLeave",date:d,workerId:w}); r.ok?refresh():toast(r.message); }
+async function addHoliday(){ if(!$("hoD").value) return toast("Pick a date"); const r=await api({action:"addHoliday",date:$("hoD").value,name:$("hoN").value||"Holiday"}); r.ok?(toast("Holiday added"),refresh()):toast(r.message); }
+async function delHoliday(d){ const r=await api({action:"deleteHoliday",date:d}); r.ok?refresh():toast(r.message); }
+
+/* ---- Duty rotation ---- */
+function vDuty(){
+  const m=D.month, n=daysInMonth(m);
+  let body="";
+  for(let d=1; d<=n; d++){
+    const date=dstr(m,d), du=D.duties[date];
+    const wd=new Date(date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short"});
+    body += `<tr><td><b>${d}</b> <span class="muted">${wd}</span></td>`;
+    if(du.holiday) body += `<td colspan="${perm().length}"><span class="tag t-warn">${esc(du.holiday)}</span></td>`;
+    else body += du.list.map(x=>`<td>${esc(x.duty)}</td>`).join("");
+    body += `<td>${du.overridden?'<span class="tag t-vio">edited</span> ':''}<button class="ghost small" onclick="overrideDuty('${date}')">✎</button></td></tr>`;
+  }
+  return `<div class="card"><h3>Duty rotation — ${m}</h3>
+    <p class="stat" style="margin-bottom:8px">Rotation: ${D.dutyNames.join(" → ")} · changes every working day · starts ${esc(D.settings.ROTATION_START)} (change in Settings). ✎ to override a single day.</p>
+    <div class="scroll"><table><tr><th>Day</th>${perm().map(w=>`<th>${esc(w.name)}</th>`).join("")}<th></th></tr>${body}</table></div></div>`;
+}
+async function overrideDuty(date){
+  const du = D.duties[date];
+  if(du.holiday) return toast("Holiday — no duties");
+  const assignments = [];
+  for(const w of perm()){
+    const cur = (du.list.find(x=>x.workerId===w.id)||{}).duty || D.dutyNames[0];
+    const pick = prompt(`${date} — duty for ${w.name}\n1 = Cashier\n2 = Checker\n3 = Assistant Cashier`,
+      String(D.dutyNames.indexOf(cur)+1));
+    if(pick===null) return;
+    const idx = Math.min(Math.max(parseInt(pick,10)||1,1),3)-1;
+    assignments.push({workerId:w.id,name:w.name,duty:D.dutyNames[idx]});
+  }
+  const r = await api({action:"setDutyOverride",date,assignments});
+  r.ok?(toast("Duty updated"),refresh()):toast(r.message);
+}
+
+/* ---- Advances ---- */
+function vAdv(){
+  const ws=perm(); const tot={}; ws.forEach(w=>tot[w.id]=0);
+  D.advances.forEach(a=>{ if(tot[a.workerId]!=null) tot[a.workerId]+=a.amount; });
+  return `
+  <div class="card"><h3>Add advance payment</h3>
+    <div class="row">
+      <select id="adW">${ws.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join("")}</select>
+      <input type="date" id="adD" value="${new Date().toISOString().slice(0,10)}">
+      <input type="number" id="adA" placeholder="Amount (Rs.)" style="width:130px">
+      <input id="adN" placeholder="Note" style="width:140px">
+      <button onclick="addAdv()">Add</button>
+    </div></div>
+  <div class="card"><h3>Advances — ${D.month}</h3>
+    ${D.advances.length? `<table><tr><th>Date</th><th>Worker</th><th>Amount</th><th>Note</th><th></th></tr>`+
+      D.advances.map(a=>`<tr><td>${a.date}</td><td>${esc(wname(a.workerId))}</td><td>${rs(a.amount)}</td><td>${esc(a.note)}</td>
+        <td><button class="ghost small" onclick="delAdv('${a.id}')">✕</button></td></tr>`).join("")+`</table>`
+      : `<p class="muted">No advances this month.</p>`}
+    <p class="stat" style="margin-top:8px">${ws.map(w=>`${esc(w.name)}: <b>${rs(tot[w.id])}</b>`).join(" · ")}</p>
+    <p class="stat">Advances are automatically deducted in the Salary tab for this month.</p></div>`;
+}
+async function addAdv(){ if(!+$("adA").value) return toast("Enter amount"); const r=await api({action:"addAdvance",date:$("adD").value,workerId:$("adW").value,amount:+$("adA").value,note:$("adN").value}); r.ok?(toast("Advance added"),refresh()):toast(r.message); }
+async function delAdv(id){ const r=await api({action:"deleteAdvance",id}); r.ok?refresh():toast(r.message); }
+
+/* ---- Cleaning ---- */
+function vClean(){
+  const rate = +(D.settings.CLEANER_RATE||0);
+  const count = D.cleanerDays.length;
+  return `
+  <div class="card"><h3>Cleaning (contract worker) — ${D.month}</h3>
+    <div class="row" style="margin-bottom:10px">
+      <input type="date" id="clD" value="${new Date().toISOString().slice(0,10)}">
+      <button onclick="addCleanDay($('clD').value)">Mark attended</button>
+    </div>
+    ${count? `<table><tr><th>Date</th><th></th></tr>`+
+      D.cleanerDays.map(c=>`<tr><td>${c.date}</td><td><button class="ghost small" onclick="delCleanDay('${c.date}')">✕</button></td></tr>`).join("")+`</table>`
+      : `<p class="muted">No days marked this month.</p>`}
+    <div class="row" style="margin-top:12px">
+      <span>Rate per day:</span>
+      <input type="number" id="clRate" value="${rate}" style="width:120px">
+      <button class="ghost small" onclick="saveCleanRate()">Save rate</button>
+    </div>
+    <p class="netbox" style="margin-top:10px">${count} day(s) × ${rs(rate)} = ${rs(count*rate)}</p></div>`;
+}
+async function addCleanDay(d){ const r=await api({action:"addCleanerDay",date:d}); r.ok?(toast("Marked"),refresh()):toast(r.message); }
+async function delCleanDay(d){ const r=await api({action:"deleteCleanerDay",date:d}); r.ok?refresh():toast(r.message); }
+async function saveCleanRate(){ const r=await api({action:"updateSetting",key:"CLEANER_RATE",value:$("clRate").value}); r.ok?(toast("Rate saved"),refresh()):toast(r.message); }
+
+/* ---- Salary ---- */
+function vSal(){
+  const ws=perm();
+  const advTot={}; ws.forEach(w=>advTot[w.id]=0);
+  D.advances.forEach(a=>{ if(advTot[a.workerId]!=null) advTot[a.workerId]+=a.amount; });
+  return `<div class="grid">` + ws.map(w=>{
+    const s = D.salary.find(x=>x.workerId===w.id) || {basic:"",deductions:0,bonus:0,note:""};
+    const adv = advTot[w.id];
+    return `<div class="card"><h3>${esc(w.name)} — ${D.month}</h3>
+      <table>
+        <tr><td>Basic salary</td><td><input type="number" id="sb-${w.id}" value="${s.basic}" style="width:120px"></td></tr>
+        <tr><td>Deductions (−)</td><td><input type="number" id="sd-${w.id}" value="${s.deductions}" style="width:120px"></td></tr>
+        <tr><td>Bonus (+)</td><td><input type="number" id="so-${w.id}" value="${s.bonus}" style="width:120px"></td></tr>
+        <tr><td>Advances (−)</td><td><b>${rs(adv)}</b> <span class="stat">(auto)</span></td></tr>
+        <tr><td>Note</td><td><input id="sn-${w.id}" value="${esc(s.note)}" style="width:140px"></td></tr>
+      </table>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <span class="netbox" id="net-${w.id}">${s.basic!==""? rs(s.basic - s.deductions + s.bonus - adv) : "—"}</span>
+        <span>
+          <button class="small" onclick="saveSal('${w.id}')">Save</button>
+          <button class="ghost small" onclick="printSlip('${w.id}')">Print slip</button>
+        </span>
+      </div></div>`;
+  }).join("") + `</div>
+  <div class="card"><p class="stat">Net = Basic − Deductions + Bonus − Advances (this month). Deductions are fully manual — attendance never changes salary automatically. Save before printing a slip.</p></div>`;
+}
+async function saveSal(wid){
+  const r = await api({action:"saveSalary",month:D.month,workerId:wid,
+    basic:+$("sb-"+wid).value||0, deductions:+$("sd-"+wid).value||0,
+    bonus:+$("so-"+wid).value||0, note:$("sn-"+wid).value});
+  if(r.ok){ toast("Saved · Net " + rs(r.net)); refresh(); } else toast(r.message);
+}
+function printSlip(wid){
+  const s = D.salary.find(x=>x.workerId===wid);
+  if(!s) return toast("Save the salary first");
+  const attCount = D.attendance.filter(a=>a.workerId===wid).length;
+  const lv = D.leaves.filter(l=>l.workerId===wid);
+  $("slip").innerHTML = `
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:20px;font-weight:800;letter-spacing:.08em">XENON HIGHER EDUCATION INSTITUTE (PVT) LTD</div>
+      <div>Salary Slip — ${D.month}</div>
+    </div>
+    <table>
+      <tr><th style="text-align:left">Employee</th><td>${esc(wname(wid))}</td></tr>
+      <tr><th style="text-align:left">Days present</th><td>${attCount} &nbsp;·&nbsp; Leave: ${lv.filter(l=>l.type==="full").length} full, ${lv.filter(l=>l.type==="half").length} half</td></tr>
+      <tr><th style="text-align:left">Basic salary</th><td>${rs(s.basic)}</td></tr>
+      <tr><th style="text-align:left">Deductions</th><td>− ${rs(s.deductions)}</td></tr>
+      <tr><th style="text-align:left">Bonus</th><td>+ ${rs(s.bonus)}</td></tr>
+      <tr><th style="text-align:left">Advance payments</th><td>− ${rs(s.advances)}</td></tr>
+      <tr><th style="text-align:left;font-size:16px">NET SALARY</th><td style="font-size:16px;font-weight:800">${rs(s.net)}</td></tr>
+      ${s.note?`<tr><th style="text-align:left">Note</th><td>${esc(s.note)}</td></tr>`:""}
+    </table>
+    <div style="display:flex;justify-content:space-between;margin-top:60px">
+      <span>______________________<br>Employee signature</span>
+      <span>______________________<br>Authorized — Kasup Devendra</span>
+    </div>
+    <div style="margin-top:24px;font-size:11px;color:#666;text-align:center">Dream ICT | Kasup Devendra | 071 8018 809</div>`;
+  window.print();
+}
+
+/* ---- Settings ---- */
+function vSet(){
+  const s = D.settings;
+  const f = (k,label,type="text") => `<tr><td>${label}</td><td class="row">
+    <input type="${type}" id="st-${k}" value="${esc(s[k]||"")}" style="width:150px">
+    <button class="ghost small" onclick="saveSet('${k}')">Save</button></td></tr>`;
+  return `<div class="card"><h3>Settings</h3><table>
+    ${f("WORK_START","Work start (HH:MM)")}
+    ${f("WORK_END","Work end (HH:MM)")}
+    ${f("GRACE_MIN","Late grace (minutes)")}
+    ${f("ROTATION_START","Rotation start date","date")}
+    ${f("PIN","Admin PIN")}
+  </table>
+  <p class="stat" style="margin-top:8px">Rotation start date = the day Mihiri is Cashier, Maneesha is Checker, Nilundi is Assistant Cashier. Rotation moves one step every working day after that.</p>
+  <p class="stat">All data is stored in your Google Sheet — you can always open the Sheet directly to view or back up everything.</p></div>`;
+}
+async function saveSet(k){
+  const r = await api({action:"updateSetting",key:k,value:$("st-"+k).value});
+  if(r.ok){ toast("Saved"); if(k==="PIN"){ PIN=$("st-"+k).value; sessionStorage.setItem("xwms_pin",PIN);} refresh(); }
+  else toast(r.message);
+}
+
+/* ---- boot ---- */
+$("monthPick").value = new Date().toISOString().slice(0,7);
+if(API_URL.indexOf("PASTE_")===0){
+  $("loginView").innerHTML = '<div class="card">Setup needed: paste your Apps Script URL into API_URL inside admin.html</div>';
+}else if(PIN){
+  $("pinInput").value = PIN; login();
+}
+$("pinInput") && $("pinInput").addEventListener("keydown",e=>{ if(e.key==="Enter") login(); });
+</script>
+</body>
+</html>
