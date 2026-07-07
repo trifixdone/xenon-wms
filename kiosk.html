@@ -135,7 +135,9 @@ async function loadBoard(){
       else if(a && a.outTime) stat = '<span class="stat out">OUT '+a.outTime+'</span>';
       else if(a && a.inTime) stat = '<span class="stat '+(a.late?'late':'in')+'">IN '+a.inTime+(a.late?' (Late)':'')+'</span>';
       return '<div class="duty"><span class="who">'+esc(x.name)+stat+'</span><span class="what">'+esc(x.duty)+'</span></div>';
-    }).join("");
+    }).join("") + (d.duties.off||[]).map(x=>
+      '<div class="duty" style="opacity:.55"><span class="who">'+esc(x.name)+'</span><span class="stat leave">'+esc(x.reason)+'</span></div>'
+    ).join("");
   }catch(e){ /* silent; retried on interval */ }
 }
 setInterval(loadBoard, 60000);
