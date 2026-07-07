@@ -172,7 +172,9 @@ function vToday(){
       return `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.duty)}</td>
         <td>${l?`<span class="tag t-vio">Leave (${esc(l.type)})</span>`:(a&&a.inTime?a.inTime+(a.late?' <span class="tag t-warn">Late</span>':""):'—')}</td>
         <td>${a&&a.outTime?a.outTime+(a.early?' <span class="tag t-warn">Early</span>':""):'—'}</td></tr>`;
-    }).join("") + "</table>";
+    }).join("") + (du.off||[]).map(x=>
+      `<tr style="opacity:.6"><td><b>${esc(x.name)}</b></td><td colspan="3"><span class="tag t-dim">${esc(x.reason)}</span></td></tr>`
+    ).join("") + "</table>";
   else dutyHtml = `<span class="muted">Change month picker to current month to see today.</span>`;
 
   const cleanedToday = D.cleanerDays.some(c=>c.date===today);
@@ -199,13 +201,16 @@ function vAtt(){
     body += `<tr><td><b>${d}</b> <span class="muted">${wd}</span>${hol?`<br><span class="tag t-warn">${esc(hol)}</span>`:""}</td>` +
       ws.map(w=>{
         const a = attOf(date,w.id), l = leaveOf(date,w.id);
+        const du = D.duties[date];
+        const isOff = du && (du.off||[]).some(x=>x.workerId===w.id);
         let cell = "";
+        if(isOff && !a) cell = `<span class="tag t-dim">Off</span>`;
         if(l){ cell = `<span class="tag t-vio">${l.type==="half"?"½ day":"Leave"}</span>`; sum[w.id][l.type==="half"?"half":"full"]++; }
         if(a){
           sum[w.id].p++; if(a.late) sum[w.id].late++; if(a.early) sum[w.id].early++;
           cell += ` ${a.inTime||"—"}${a.late?"<span class='tag t-warn'>L</span>":""} → ${a.outTime||"…"}${a.early?"<span class='tag t-warn'>E</span>":""}`;
         }
-        if(!a && !l && !hol) cell = `<span class="muted">—</span>`;
+        if(!a && !l && !hol && !isOff) cell = `<span class="muted">—</span>`;
         return `<td>${cell} <button class="ghost small" onclick="editAtt('${date}','${w.id}')">✎</button></td>`;
       }).join("") + "</tr>";
   }
@@ -271,7 +276,12 @@ function vDuty(){
     const wd=new Date(date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short"});
     body += `<tr><td><b>${d}</b> <span class="muted">${wd}</span></td>`;
     if(du.holiday) body += `<td colspan="${perm().length}"><span class="tag t-warn">${esc(du.holiday)}</span></td>`;
-    else body += du.list.map(x=>`<td>${esc(x.duty)}</td>`).join("");
+    else body += perm().map(w=>{
+      const a = (du.list||[]).find(x=>x.workerId===w.id);
+      if(a) return `<td>${esc(a.duty)}</td>`;
+      const o = (du.off||[]).find(x=>x.workerId===w.id);
+      return `<td>${o?`<span class="tag t-dim">${esc(o.reason)}</span>`:'—'}</td>`;
+    }).join("");
     body += `<td>${du.overridden?'<span class="tag t-vio">edited</span> ':''}<button class="ghost small" onclick="overrideDuty('${date}')">✎</button></td></tr>`;
   }
   return `<div class="card"><h3>Duty rotation — ${m}</h3>
@@ -283,12 +293,13 @@ async function overrideDuty(date){
   if(du.holiday) return toast("Holiday — no duties");
   const assignments = [];
   for(const w of perm()){
-    const cur = (du.list.find(x=>x.workerId===w.id)||{}).duty || D.dutyNames[0];
-    const pick = prompt(`${date} — duty for ${w.name}\n1 = Cashier\n2 = Checker\n3 = Assistant Cashier`,
-      String(D.dutyNames.indexOf(cur)+1));
+    const inList = (du.list||[]).find(x=>x.workerId===w.id);
+    const isOff = (du.off||[]).some(x=>x.workerId===w.id);
+    const cur = isOff ? 4 : (D.dutyNames.indexOf(inList?inList.duty:D.dutyNames[0])+1);
+    const pick = prompt(`${date} — duty for ${w.name}\n1 = Cashier\n2 = Checker\n3 = Assistant Cashier\n4 = Off (not working)`, String(cur));
     if(pick===null) return;
-    const idx = Math.min(Math.max(parseInt(pick,10)||1,1),3)-1;
-    assignments.push({workerId:w.id,name:w.name,duty:D.dutyNames[idx]});
+    const idx = Math.min(Math.max(parseInt(pick,10)||1,1),4)-1;
+    assignments.push({workerId:w.id,name:w.name,duty: idx===3 ? "Off" : D.dutyNames[idx]});
   }
   const r = await api({action:"setDutyOverride",date,assignments});
   r.ok?(toast("Duty updated"),refresh()):toast(r.message);
@@ -408,14 +419,24 @@ function vSet(){
   const f = (k,label,type="text") => `<tr><td>${label}</td><td class="row">
     <input type="${type}" id="st-${k}" value="${esc(s[k]||"")}" style="width:150px">
     <button class="ghost small" onclick="saveSet('${k}')">Save</button></td></tr>`;
+  const DAYS = [["none","No fixed off day"],["mon","Monday"],["tue","Tuesday"],["wed","Wednesday"],
+                ["thu","Thursday"],["fri","Friday"],["sat","Saturday"],["sun","Sunday"]];
+  const offRow = w => {
+    const k = "OFF_"+w.id, cur = (s[k]||"none").toLowerCase();
+    return `<tr><td>Weekly off — ${esc(w.name)}</td><td class="row">
+      <select id="st-${k}">${DAYS.map(([v,l])=>`<option value="${v}" ${v===cur?"selected":""}>${l}</option>`).join("")}</select>
+      <button class="ghost small" onclick="saveSet('${k}')">Save</button></td></tr>`;
+  };
   return `<div class="card"><h3>Settings</h3><table>
     ${f("WORK_START","Work start (HH:MM)")}
     ${f("WORK_END","Work end (HH:MM)")}
     ${f("GRACE_MIN","Late grace (minutes)")}
     ${f("ROTATION_START","Rotation start date","date")}
+    ${perm().map(offRow).join("")}
     ${f("PIN","Admin PIN")}
   </table>
-  <p class="stat" style="margin-top:8px">Rotation start date = the day Mihiri is Cashier, Maneesha is Checker, Nilundi is Assistant Cashier. Rotation moves one step every working day after that.</p>
+  <p class="stat" style="margin-top:8px">Rotation start date = the day Mihiri is Cashier, Maneesha is Checker, Nilundi is Assistant Cashier. The cycle repeats every 4 working days: Nilundi is never Cashier — Mihiri and Maneesha take turns at the cash.</p>
+  <p class="stat">On a worker's weekly off day, the other two are assigned Cashier and Checker automatically. For a one-week swap, use ✎ on that day in Duty Rotation and choose "Off".</p>
   <p class="stat">All data is stored in your Google Sheet — you can always open the Sheet directly to view or back up everything.</p></div>`;
 }
 async function saveSet(k){
