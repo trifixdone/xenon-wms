@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xenon WMS</title>
+<style>
+  :root{--bg:#1c0f33;--panel:#2a1750;--line:#43307a;--ink:#fff;--dim:#b9a8e6;--glow:#c9a6ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(1000px 600px at 50% -150px,#3b1f6e 0%,var(--bg) 60%);
+    color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:22px;gap:26px;
+  }
+  h1{font-size:26px;letter-spacing:.14em;font-weight:800}
+  h1 span{color:var(--glow)}
+  p.sub{color:var(--dim);font-size:14px;text-align:center;max-width:340px}
+  .links{display:flex;flex-direction:column;gap:14px;width:100%;max-width:360px}
+  a.btn{
+    display:block;text-align:center;text-decoration:none;color:var(--ink);
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px;font-size:17px;font-weight:700;
+  }
+  a.btn small{display:block;font-weight:400;color:var(--dim);font-size:12px;margin-top:4px}
+  a.btn:active{background:#341f60}
+  a.main{background:linear-gradient(135deg,#6d28d9,#4c1d95);border-color:#7c3aed;box-shadow:0 0 24px rgba(155,110,255,.35)}
+  footer{color:var(--dim);font-size:11px;letter-spacing:.06em;text-align:center}
+</style>
+</head>
+<body>
+  <div style="text-align:center">
+    <h1>XENON <span>WMS</span></h1>
+    <p class="sub">Worker Management System · Xenon Higher Education Institute (Pvt) Ltd</p>
+  </div>
+  <div class="links">
+    <a class="btn main" href="kiosk.html">📷 Attendance Kiosk<small>For the office phone — QR scan in/out</small></a>
+    <a class="btn" href="admin.html">🔐 Admin Dashboard<small>Attendance · Duties · Leaves · Salary</small></a>
+    <a class="btn" href="qr-cards.html">🪪 Worker QR Cards<small>Print staff attendance cards</small></a>
+  </div>
+  <footer>Dream ICT · Kasup Devendra · 071 8018 809</footer>
+</body>
+</html>
