@@ -284,9 +284,30 @@ function vDuty(){
     }).join("");
     body += `<td>${du.overridden?'<span class="tag t-vio">edited</span> ':''}<button class="ghost small" onclick="overrideDuty('${date}')">✎</button></td></tr>`;
   }
-  return `<div class="card"><h3>Duty rotation — ${m}</h3>
-    <p class="stat" style="margin-bottom:8px">Rotation: ${D.dutyNames.join(" → ")} · changes every working day · starts ${esc(D.settings.ROTATION_START)} (change in Settings). ✎ to override a single day.</p>
+  return `
+  <div class="card"><h3>Off day — this week's changes</h3>
+    <div class="row" style="margin-bottom:10px">
+      <select id="odW">${perm().map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join("")}</select>
+      <input type="date" id="odD" value="${new Date().toISOString().slice(0,10)}">
+      <button onclick="setOffDay()">Set off day</button>
+    </div>
+    ${ (D.offDays&&D.offDays.length) ? `<table><tr><th>Date</th><th>Worker</th><th></th></tr>`+
+      D.offDays.map(o=>`<tr><td>${o.date}</td><td>${esc(wname(o.workerId))}</td>
+        <td><button class="ghost small" onclick="delOffDay('${o.date}','${o.workerId}')">✕</button></td></tr>`).join("")+`</table>`
+      : `<p class="muted">No changes this month — everyone follows their default off day (see Settings).</p>`}
+    <p class="stat" style="margin-top:8px">Setting a date here replaces that worker's default off day <b>for that week only</b> (one off day per worker per week). Next week returns to the default automatically. ✕ removes the change and restores the default.</p>
+  </div>
+  <div class="card"><h3>Duty rotation — ${m}</h3>
+    <p class="stat" style="margin-bottom:8px">Rotation: ${D.dutyNames.join(" → ")} · changes every working day · starts ${esc(D.settings.ROTATION_START)} (change in Settings). On off days, the 2 present workers get Cashier + Checker. ✎ to override a single day's duties.</p>
     <div class="scroll"><table><tr><th>Day</th>${perm().map(w=>`<th>${esc(w.name)}</th>`).join("")}<th></th></tr>${body}</table></div></div>`;
+}
+async function setOffDay(){
+  const r = await api({action:"setOffDay",date:$("odD").value,workerId:$("odW").value});
+  r.ok?(toast("Off day set for that week"),refresh()):toast(r.message);
+}
+async function delOffDay(d,w){
+  const r = await api({action:"deleteOffDay",date:d,workerId:w});
+  r.ok?(toast("Back to default off day"),refresh()):toast(r.message);
 }
 async function overrideDuty(date){
   const du = D.duties[date];
@@ -428,9 +449,9 @@ function vSet(){
       <button class="ghost small" onclick="saveSet('${k}')">Save</button></td></tr>`;
   };
   return `<div class="card"><h3>Settings</h3><table>
-    ${f("WORK_START","Work start (HH:MM)")}
-    ${f("WORK_END","Work end (HH:MM)")}
-    ${f("GRACE_MIN","Late grace (minutes)")}
+    ${f("WORK_START","Work start","time")}
+    ${f("WORK_END","Work end","time")}
+    ${f("GRACE_MIN","Late grace (minutes)","number")}
     ${f("ROTATION_START","Rotation start date","date")}
     ${perm().map(offRow).join("")}
     ${f("PIN","Admin PIN")}
