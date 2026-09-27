@@ -3,14 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="theme-color" content="#1c0f33">
 <title>Xenon Attendance Kiosk</title>
+<script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
     --bg:#1c0f33; --panel:#2a1750; --line:#43307a;
     --ink:#ffffff; --dim:#b9a8e6;
     --glow:#c9a6ff; --violet:#9d6bff;
-    --ok:#3ddc84; --warn:#ffb547; --bad:#ff6b6b;
+    --ok:#3ddc84; --bad:#ff6b6b; --warn:#ffb547;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
@@ -24,49 +26,67 @@
   .brand{font-weight:800;letter-spacing:.12em;font-size:15px;text-transform:uppercase}
   .brand span{color:var(--glow)}
   #clock{font-variant-numeric:tabular-nums;font-size:15px;color:var(--dim)}
-  /* duty board — the "xenon tube" */
-  .board{
-    background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;
-  }
-  .board h2{
-    font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
-    padding-bottom:8px;margin-bottom:10px;position:relative;
-  }
-  .board h2::after{
-    content:"";position:absolute;left:0;bottom:0;height:2px;width:120px;border-radius:2px;
-    background:linear-gradient(90deg,var(--glow),var(--violet));
-    box-shadow:0 0 12px var(--glow);
-  }
-  .duty{display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px dashed var(--line);font-size:17px}
-  .duty:last-child{border-bottom:0}
-  .duty .who{font-weight:700}
-  .duty .what{color:var(--glow);font-weight:600}
-  .duty .stat{font-size:12px;margin-left:8px;color:var(--dim)}
-  .duty .stat.in{color:var(--ok)} .duty .stat.out{color:var(--dim)}
-  .duty .stat.late{color:var(--warn)} .duty .stat.leave{color:var(--violet)}
+  #notice{display:none;background:#5a1d1d;border:1px solid #ff6b6b;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4}
+
+  /* duty board */
+  .board{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
+  .board h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);padding-bottom:8px;margin-bottom:6px;position:relative}
+  .board h2::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:120px;border-radius:2px;
+    background:linear-gradient(90deg,var(--glow),var(--violet));box-shadow:0 0 12px var(--glow)}
+  .duty{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line)}
+  .duty:last-of-type{border-bottom:0}
+  .duty .who{font-weight:700;font-size:17px}
+  .duty .stat{font-size:13px;color:var(--dim);margin-top:2px}
+  .duty .stat .in{color:var(--ok)} .duty .stat .bad{color:var(--bad);font-weight:700} .duty .stat .out{color:var(--dim)}
+  .duty .what{color:var(--glow);font-weight:700;font-size:16px;text-align:right}
+  .duty .what.none{color:var(--dim);font-weight:500}
+  .duty.dim{opacity:.55}
+  .duty.late .who{color:var(--bad)}
+  .warnline{color:var(--warn);font-size:13px;padding:8px 4px 0}
   .holiday{color:var(--warn);font-size:18px;font-weight:700;text-align:center;padding:10px 0}
+
   /* scanner */
   .scanwrap{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;flex:1;display:flex;flex-direction:column;gap:10px}
   #reader{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden}
   #reader video{border-radius:12px}
   .hint{color:var(--dim);text-align:center;font-size:14px}
-  /* result banner */
-  #banner{
-    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-    background:rgba(20,8,40,.93);z-index:50;padding:24px;text-align:center;
-  }
-  #banner .card{max-width:460px;width:100%;border-radius:20px;padding:34px 22px;border:1px solid var(--line)}
-  #banner .big{font-size:44px;font-weight:800;margin-bottom:8px}
-  #banner .name{font-size:30px;font-weight:700;margin-bottom:6px}
-  #banner .sub{font-size:18px;color:var(--dim)}
-  .b-ok{background:linear-gradient(180deg,rgba(61,220,132,.16),transparent);}
-  .b-ok .big{color:var(--ok)}
-  .b-warn{background:linear-gradient(180deg,rgba(255,181,71,.16),transparent);}
-  .b-warn .big{color:var(--warn)}
-  .b-bad{background:linear-gradient(180deg,rgba(255,107,107,.16),transparent);}
-  .b-bad .big{color:var(--bad)}
-  footer{color:var(--dim);font-size:11px;text-align:center;letter-spacing:.06em}
   #err{color:var(--bad);text-align:center;font-size:14px;display:none;padding:8px}
+  footer{color:var(--dim);font-size:11px;text-align:center;letter-spacing:.06em}
+
+  /* tap to start */
+  #start{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    background:radial-gradient(900px 600px at 50% 20%, #4c1d95 0%, #1c0f33 70%);text-align:center;padding:24px;
+    -webkit-tap-highlight-color:transparent;user-select:none}
+  #start .logo{font-weight:800;letter-spacing:.14em;font-size:18px;margin-bottom:34px}
+  #start .logo span{color:var(--glow)}
+  #start .btn{width:210px;height:210px;border-radius:50%;margin:0 auto 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#7c3aed,#4c1d95);border:2px solid #a78bfa;box-shadow:0 0 50px rgba(167,139,250,.55);
+    animation:pulse 1.8s ease-in-out infinite}
+  #start .btn b{font-size:30px;line-height:1.15}
+  #start .btn i{font-style:normal;font-size:44px;margin-bottom:6px}
+  #start .small{color:var(--dim);font-size:15px;line-height:1.5}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+  /* checking */
+  #checking{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:60;display:none;align-items:center;gap:10px;
+    background:#2a1750;border:1px solid var(--violet);border-radius:40px;padding:12px 20px;font-size:16px;font-weight:600}
+  .spin{width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* result screen: green = good, red = late / early / problem */
+  #banner{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;text-align:center;padding:24px}
+  #banner.show{display:flex}
+  #banner.ok{background:radial-gradient(900px 700px at 50% 30%, #17a35c 0%, #0b5d36 70%)}
+  #banner.bad{background:radial-gradient(900px 700px at 50% 30%, #e0413a 0%, #8b1a1a 70%)}
+  #banner.info{background:radial-gradient(900px 700px at 50% 30%, #6d28d9 0%, #2e1065 70%)}
+  #banner .icon{width:120px;height:120px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;
+    font-size:70px;font-weight:900;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.7)}
+  #banner .big{font-size:48px;font-weight:900;letter-spacing:.06em}
+  #banner .name{font-size:34px;font-weight:800;margin-top:6px}
+  #banner .time{font-size:30px;font-weight:700;margin-top:14px;font-variant-numeric:tabular-nums}
+  #banner .msg{font-size:26px;font-weight:700;margin-top:10px}
+  #banner .dutyl{font-size:20px;margin-top:18px;padding:8px 18px;border-radius:30px;background:rgba(0,0,0,.2);display:inline-block}
+  #banner .dutyl:empty{display:none}
 </style>
 </head>
 <body>
@@ -76,8 +96,10 @@
   <div id="clock">--:--</div>
 </header>
 
+<div id="notice"></div>
+
 <section class="board">
-  <h2 id="boardTitle">Today's Duties</h2>
+  <h2>Today's Duties</h2>
   <div id="duties"><div class="hint">Loading…</div></div>
 </section>
 
@@ -89,136 +111,249 @@
 
 <footer>Dream ICT · Kasup Devendra · 071 8018 809</footer>
 
-<div id="banner"><div class="card" id="bannerCard">
-  <div class="big" id="bBig"></div>
-  <div class="name" id="bName"></div>
-  <div class="sub" id="bSub"></div>
-</div></div>
+<div id="start" role="button" tabindex="0" aria-label="Tap to start">
+  <div>
+    <div class="logo">XENON <span>ATTENDANCE</span></div>
+    <div class="btn"><i>👆</i><b>Tap to<br>start</b></div>
+    <div class="small">Turns on the camera and the voice.<br>Needed once each time this page opens.</div>
+  </div>
+</div>
+
+<div id="checking"><div class="spin"></div>Checking card…</div>
+
+<div id="banner" aria-live="assertive">
+  <div>
+    <div class="icon" id="bIcon"></div>
+    <div class="big" id="bBig"></div>
+    <div class="name" id="bName"></div>
+    <div class="time" id="bTime"></div>
+    <div class="msg" id="bMsg"></div>
+    <div class="dutyl" id="bDuty"></div>
+  </div>
+</div>
 
 <script>
-/* ============ CONFIG — paste your Apps Script Web App URL below ============ */
-const API_URL = "https://script.google.com/macros/s/AKfycbxWGrafPkD3sgT5br2mcy7oKB2lxQARL3Uq1lJ4Xz9L9WBbS0-2X97oKHyMww3OVTeX/exec";
-/* =========================================================================== */
-
+/* The Apps Script URL is set once in config.js (same folder). */
+const API_URL = String(window.XENON_API_URL || "").trim();
 const $ = id => document.getElementById(id);
-let lastScan = { code: null, t: 0 };
-let busy = false;
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+let started = false, busy = false, lastScan = { code: null, t: 0 };
+let actx = null, VOICE = null, wakeLock = null;
 
 function api(payload){
-  return fetch(API_URL, { method:"POST", body: JSON.stringify(payload) })
-    .then(r => r.json());
+  return fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(r => r.json());
 }
 
-/* ---- clock ---- */
+/* ---------- time helpers ---------- */
+function fmt12(hhmm){
+  if(!hhmm) return "";
+  let [h, m] = String(hhmm).split(":").map(Number);
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return h + ":" + String(m).padStart(2, "0") + " " + ap;
+}
+function greet(){
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
 function tick(){
   const n = new Date();
-  $("clock").textContent = n.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}) +
-    "  " + n.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  $("clock").textContent = n.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
+    "  " + fmt12(String(n.getHours()) + ":" + String(n.getMinutes()));
 }
-setInterval(tick, 15000); tick();
+setInterval(tick, 10000); tick();
 
-/* ---- duty board ---- */
-async function loadBoard(){
+/* ---------- sound & voice ---------- */
+function unlockAudio(){
   try{
-    const d = await api({ action:"board" });
-    if(!d.ok) return;
-    const box = $("duties");
-    if(d.duties.holiday){
-      box.innerHTML = '<div class="holiday">🌙 Holiday — ' + esc(d.duties.holiday) + '</div>';
-      return;
-    }
-    const leaves = {}; (d.leaves||[]).forEach(l => leaves[l.workerId] = l.type);
-    box.innerHTML = d.duties.list.map(x=>{
-      const a = d.attendance[x.workerId];
-      let stat = '<span class="stat">not in yet</span>';
-      if(leaves[x.workerId]) stat = '<span class="stat leave">Leave ('+esc(leaves[x.workerId])+')</span>';
-      else if(a && a.outTime) stat = '<span class="stat out">OUT '+a.outTime+'</span>';
-      else if(a && a.inTime) stat = '<span class="stat '+(a.late?'late':'in')+'">IN '+a.inTime+(a.late?' (Late)':'')+'</span>';
-      return '<div class="duty"><span class="who">'+esc(x.name)+stat+'</span><span class="what">'+esc(x.duty)+'</span></div>';
-    }).join("") + (d.duties.off||[]).map(x=>
-      '<div class="duty" style="opacity:.55"><span class="who">'+esc(x.name)+'</span><span class="stat leave">'+esc(x.reason)+'</span></div>'
-    ).join("");
-  }catch(e){ /* silent; retried on interval */ }
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if(actx.state === "suspended") actx.resume();
+  }catch(e){}
+}
+function tone(freq, secs, vol){
+  if(!actx) return;
+  try{
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.frequency.value = freq; g.gain.value = vol || .12;
+    o.start(); o.stop(actx.currentTime + secs);
+  }catch(e){}
+}
+function pickVoice(){
+  if(!("speechSynthesis" in window)) return;
+  const vs = speechSynthesis.getVoices() || [];
+  VOICE = vs.find(v => /^en[-_]GB/i.test(v.lang)) || vs.find(v => /^en[-_]US/i.test(v.lang)) ||
+          vs.find(v => /^en[-_]IN/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+
+function speak(text, done){
+  let finished = false;
+  const fin = () => { if(!finished){ finished = true; if(done) done(); } };
+  if(!text || !("speechSynthesis" in window)){ setTimeout(fin, 2500); return; }
+  try{
+    speechSynthesis.cancel();
+    speechSynthesis.resume();
+    const u = new SpeechSynthesisUtterance(text);
+    if(VOICE){ u.voice = VOICE; u.lang = VOICE.lang; } else u.lang = "en-US";
+    u.rate = 0.95; u.pitch = 1; u.volume = 1;
+    u.onend = fin; u.onerror = fin;
+    speechSynthesis.speak(u);
+    setTimeout(fin, 9000);               // never wait forever
+  }catch(e){ setTimeout(fin, 2500); }
+}
+
+async function keepAwake(){
+  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && started){ keepAwake(); loadBoard(); }
+});
+
+/* ---------- duty board ---------- */
+function checkVersion(d){
+  if(d && d.api >= 2) { $("notice").style.display = "none"; return; }
+  $("notice").style.display = "block";
+  $("notice").innerHTML = "<b>The Apps Script is still the old version.</b> In Apps Script: Deploy → Manage deployments → ✎ → Version: <b>New version</b> → Deploy.";
+}
+
+async function loadBoard(){
+  if(!API_URL) return;
+  try{
+    const d = await api({ action: "board" });
+    checkVersion(d);
+    if(d.ok) renderBoard(d);
+  }catch(e){ /* retried every minute */ }
 }
 setInterval(loadBoard, 60000);
 
-function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-
-/* ---- feedback ---- */
-function beep(ok){
-  try{
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = ok ? 880 : 220; g.gain.value = .15;
-    o.start(); o.stop(ctx.currentTime + .18);
-  }catch(e){}
-}
-function banner(cls, big, name, sub){
-  const b = $("banner"), c = $("bannerCard");
-  c.className = "card " + cls;
-  $("bBig").textContent = big; $("bName").textContent = name; $("bSub").textContent = sub;
-  b.style.display = "flex";
-  setTimeout(()=>{ b.style.display = "none"; }, 3200);
+// rows from an old (v1) backend, so the board still works until the new version is deployed
+function legacyRows(d){
+  const du = d.duties || {}, att = d.attendance || {}, lv = {};
+  (d.leaves || []).forEach(l => { lv[l.workerId] = l.type; });
+  const mk = (x, duty, off) => { const a = att[x.workerId] || {};
+    return { workerId: x.workerId, name: x.name, duty, off: lv[x.workerId] === "full" ? "Leave" : off, inTime: a.inTime || "",
+             outTime: a.outTime || "", late: !!a.late, early: !!a.early, half: lv[x.workerId] === "half" }; };
+  return (du.list || []).map(x => mk(x, x.duty, "")).concat((du.off || []).map(x => mk(x, "", x.reason)));
 }
 
-/* ---- scanning ---- */
+function renderBoard(d){
+  const box = $("duties");
+  const holiday = d.holiday || (d.duties && d.duties.holiday);
+  if(holiday){ box.innerHTML = '<div class="holiday">🌙 Holiday — ' + esc(holiday) + '</div>'; return; }
+  const rows = d.rows || legacyRows(d);
+  if(!rows.length){ box.innerHTML = '<div class="hint">No workers yet — add them in Admin → Workers.</div>'; return; }
+  box.innerHTML = rows.map(r => {
+    let stat;
+    if(r.off && !r.inTime) stat = r.off === "Leave" ? "On leave" : esc(r.off);
+    else if(r.inTime){
+      stat = '<span class="' + (r.late ? "bad" : "in") + '">IN ' + fmt12(r.inTime) + (r.late ? " · Late" : "") + "</span>";
+      if(r.outTime) stat += ' · <span class="' + (r.early ? "bad" : "out") + '">OUT ' + fmt12(r.outTime) + (r.early ? " · Early" : "") + "</span>";
+    } else stat = "not in yet";
+    if(r.half) stat += " · ½ day leave";
+    const duty = r.off ? "Off" : (r.duty || "No duty");
+    const cls = "duty" + (r.off && !r.inTime ? " dim" : "") + (r.late ? " late" : "");
+    return '<div class="' + cls + '"><div><div class="who">' + esc(r.name) + '</div><div class="stat">' + stat +
+           '</div></div><div class="what' + (r.duty ? "" : " none") + '">' + esc(duty) + "</div></div>";
+  }).join("") + (d.warnings || []).map(w => '<div class="warnline">⚠ ' + esc(w) + "</div>").join("");
+}
+
+/* ---------- scan result ---------- */
+function feedback(r){
+  const name = r.name || "";
+  if(r.event === "NET") return { cls: "bad", icon: "✕", big: "No connection", msg: "Check the internet and try again",
+                                 say: "No connection. Please try again." };
+  if(!r.ok){
+    if(r.event === "INACTIVE") return { cls: "bad", icon: "✕", big: "Card not active", name, msg: "Please see the office",
+                                        say: "This card is not active." };
+    return { cls: "bad", icon: "✕", big: "Card not recognised", msg: r.message && r.event !== "UNKNOWN" ? r.message : "Please try again",
+             say: "Card not recognised. Please try again." };
+  }
+  const t = fmt12(r.time);
+  if(r.event === "IN"){
+    const late = !!r.late;
+    return { cls: late ? "bad" : "ok", icon: late ? "!" : "✓", big: "IN", name, time: t,
+             msg: late ? "You are late" : "You are on time", duty: r.duty ? "Today: " + r.duty : "",
+             say: greet() + " " + name + ". In time " + t + ". " + (late ? "You are late." : "You are on time.") };
+  }
+  if(r.event === "OUT"){
+    const early = !!r.early;
+    return { cls: early ? "bad" : "ok", icon: early ? "!" : "✓", big: "OUT", name, time: t + (r.updated ? " (updated)" : ""),
+             msg: early ? "You are leaving early" : "Thank you",
+             say: "Goodbye " + name + ". Out time " + t + ". " + (early ? "You are leaving early." : "Thank you.") };
+  }
+  if(r.event === "ALREADY_IN") return { cls: "info", icon: "✓", big: "Already in", name, time: "since " + t,
+                                        say: name + ", you are already checked in." };
+  return { cls: "bad", icon: "✕", big: "Scan failed", msg: "Please try again", say: "Please try again." };
+}
+
+function showResult(f){
+  const b = $("banner");
+  $("bIcon").textContent = f.icon; $("bBig").textContent = f.big; $("bName").textContent = f.name || "";
+  $("bTime").textContent = f.time || ""; $("bMsg").textContent = f.msg || ""; $("bDuty").textContent = f.duty || "";
+  b.className = "show " + f.cls;
+  window.__lastSpoken = f.say;
+  const shownAt = Date.now();
+  let closed = false;
+  const close = () => {
+    if(closed) return; closed = true;
+    setTimeout(() => { b.className = ""; busy = false; }, Math.max(0, 3500 - (Date.now() - shownAt)));
+  };
+  speak(f.say, () => setTimeout(close, 400));
+  setTimeout(close, 10000);
+}
+
 async function onScan(code){
   const now = Date.now();
   if(busy) return;
-  if(lastScan.code === code && now - lastScan.t < 15000) return; // ignore repeats
+  if(lastScan.code === code && now - lastScan.t < 15000) return;   // same card held in front of the camera
   lastScan = { code, t: now };
   busy = true;
-  try{
-    const r = await api({ action:"scan", code });
-    if(!r.ok){ beep(false); banner("b-bad","✕", r.message || "Scan failed", "Please try again"); return; }
-    if(r.event === "IN"){
-      beep(true);
-      banner(r.late ? "b-warn" : "b-ok", "✓ IN", r.name, r.time + (r.late ? "  ·  Late" : "  ·  Good morning!"));
-    } else if(r.event === "OUT"){
-      beep(true);
-      banner(r.early ? "b-warn" : "b-ok", "✓ OUT", r.name, r.time + (r.early ? "  ·  Early out" : "  ·  Good evening!"));
-    } else if(r.event === "ALREADY_IN"){
-      beep(true); banner("b-ok","✓", r.name, "Already checked in at " + r.time);
-    } else if(r.event === "DONE"){
-      beep(false); banner("b-warn","!", r.name, "Already IN " + r.inTime + " · OUT " + r.outTime);
-    }
-    loadBoard();
-  }catch(e){
-    beep(false); banner("b-bad","✕","No connection","Check internet and try again");
-  }finally{
-    setTimeout(()=>{ busy = false; }, 1200);
-  }
+  tone(1320, .07, .15);                                              // "got it" click
+  $("checking").style.display = "flex";
+  let r;
+  try{ r = await api({ action: "scan", code }); }
+  catch(e){ r = { ok: false, event: "NET" }; }
+  $("checking").style.display = "none";
+  checkVersion(r);
+  showResult(feedback(r));
+  loadBoard();
 }
 
 function startScanner(){
+  if(typeof Html5Qrcode === "undefined"){ showErr("Scanner could not load — check the internet and reload the page."); return; }
   const scanner = new Html5Qrcode("reader");
-  scanner.start(
-    { facingMode: "environment" },
-    { fps: 8, qrbox: { width: 220, height: 220 } },
-    text => onScan(text.trim()),
-    () => {}
-  ).catch(err => {
-    const e = $("err");
-    e.style.display = "block";
-    e.textContent = "Camera not available: " + err + " — open this page over HTTPS and allow camera access.";
-  });
+  scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 230, height: 230 } },
+                text => onScan(String(text).trim()), () => {})
+    .catch(err => showErr("Camera not available: " + err + " — allow camera access for this page in Chrome settings."));
 }
+function showErr(msg){ const e = $("err"); e.style.display = "block"; e.textContent = msg; }
 
-/* refresh board at midnight */
-(function(){
-  const now = new Date();
-  const ms = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 0, 0, 30) - now;
-  setTimeout(()=>{ loadBoard(); setInterval(loadBoard, 86400000); }, ms);
-})();
-
-if(API_URL.indexOf("PASTE_") === 0){
-  $("err").style.display = "block";
-  $("err").textContent = "Setup needed: paste your Apps Script URL into API_URL inside kiosk.html";
-} else {
+/* ---------- start (one tap unlocks sound, voice and camera) ---------- */
+function start(){
+  if(started) return;
+  started = true;
+  $("start").style.display = "none";
+  unlockAudio();
+  if(!API_URL){ showErr("Setup needed: put your Apps Script URL into config.js."); return; }
+  speak("Ready");
+  keepAwake();
   loadBoard();
   startScanner();
 }
+$("start").addEventListener("click", start);
+$("start").addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " ") start(); });
+
+/* refresh the board just after midnight */
+(function(){
+  const n = new Date();
+  const ms = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 30) - n;
+  setTimeout(() => { loadBoard(); setInterval(loadBoard, 86400000); }, ms);
+})();
+
+if(!API_URL) $("duties").innerHTML = '<div class="hint">Setup needed: put your Apps Script URL into config.js.</div>';
+else loadBoard();
 </script>
 </body>
 </html>
