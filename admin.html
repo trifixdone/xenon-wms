@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F2FA">
+<title>Xenon WMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+  :root{
+    --mist:#F4F2FA; --paper:#FFFFFF; --ink:#1E1638; --ink2:#463D63; --dim:#776E93; --line:#E9E4F4; --line2:#D8D0EC;
+    --violet:#6A3DF0; --violet2:#5428DA; --lav:#EFEAFF; --glow:#C4B5FF;
+    --mint:#12945F; --mintBg:#E2F5EC; --ember:#D33840; --emberBg:#FCE9EA; --sun:#A86C06; --sunBg:#FCF0D8;
+    --c-violet:#6A3DF0; --c-teal:#0B8F88; --c-amber:#A86C06; --c-rose:#C93463; --c-sky:#1C78C6; --c-lime:#3F7F19; --c-orange:#C35512; --c-slate:#56607A;
+    --display:"Unbounded",system-ui,sans-serif; --ui:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --navh:64px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--mist)}
+  body{font-family:var(--ui);font-size:15px;line-height:1.45;color:var(--ink);background:var(--mist);-webkit-tap-highlight-color:transparent}
+  .ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{background:none;border:0;cursor:pointer}
+  :focus-visible{outline:2.5px solid var(--violet);outline-offset:2px;border-radius:10px}
+  [hidden]{display:none !important}
+
+  /* ---- shell */
+  .bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px;
+       padding:calc(10px + env(safe-area-inset-top)) 16px 10px;background:rgba(244,242,250,.92);backdrop-filter:blur(10px)}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:600;font-size:15px}
+  .tile{width:34px;height:34px;border-radius:9px;position:relative;display:grid;place-items:center;flex:none;
+        background:linear-gradient(150deg,#7B54FF,#4423B8);box-shadow:0 4px 14px rgba(106,61,240,.35)}
+  .tile b{font-family:var(--display);font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em}
+  .tile i{position:absolute;top:3px;left:4px;font-style:normal;font-size:7px;font-weight:700;color:var(--glow)}
+  .hbtns{display:flex;gap:6px}
+  .hbtn{display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:12px;font-weight:600;font-size:14px;color:var(--ink2)}
+  .hbtn.on{background:var(--paper);color:var(--violet);box-shadow:0 1px 0 var(--line)}
+  main{max-width:960px;margin:0 auto;padding:6px 16px calc(var(--navh) + 28px + env(safe-area-inset-bottom))}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;background:var(--paper);
+        border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--dim);padding:4px 0}
+  .tabs button .ic{width:22px;height:22px;padding:3px;box-sizing:content-box;border-radius:12px}
+  .tabs button.on{color:var(--violet)}
+  .tabs button.on .ic{background:var(--lav);box-shadow:0 0 0 1px rgba(106,61,240,.15),0 0 16px rgba(106,61,240,.25)}
+  @media (min-width:980px){
+    .tabs{top:0;right:auto;width:96px;flex-direction:column;justify-content:flex-start;gap:6px;padding-top:80px;border-top:0;border-right:1px solid var(--line)}
+    .tabs button{flex:none;padding:10px 0}
+    .bar,main{margin-left:96px}
+    main{padding-bottom:40px}
+  }
+
+  /* ---- page structure */
+  .phead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 14px}
+  h1{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.015em;line-height:1.2}
+  h2{font-size:17px;font-weight:700;margin-bottom:10px}
+  .panel{background:var(--paper);border-radius:20px;padding:16px;margin-bottom:14px;border:1px solid var(--line)}
+  .panel.flush{padding:6px 0}
+  .panel.flush h2{padding:10px 16px 0}
+  .sub{color:var(--dim);font-size:13.5px}
+  .muted{color:var(--dim)}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .spread{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .grow{flex:1;min-width:0}
+  .note{background:var(--lav);color:var(--ink2);border-radius:14px;padding:11px 13px;font-size:13.5px;margin-top:12px}
+  .warn{display:flex;gap:9px;align-items:flex-start;background:var(--sunBg);color:var(--sun);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-weight:600;font-size:14px}
+  .bad-banner{background:var(--emberBg);color:var(--ember);border-radius:14px;padding:12px 14px;margin:8px 0 14px;font-size:14px}
+
+  /* ---- buttons & fields */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:13px;font-weight:700;font-size:15px;white-space:nowrap;
+       background:var(--violet);color:#fff;box-shadow:0 6px 18px rgba(106,61,240,.28)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:var(--paper);color:var(--violet);border:1.5px solid var(--line2);box-shadow:none}
+  .btn.quiet{background:none;color:var(--violet);box-shadow:none;padding:8px 10px}
+  .btn.danger{background:var(--paper);color:var(--ember);border:1.5px solid #F2C9CC;box-shadow:none}
+  .btn.small{padding:7px 11px;font-size:13.5px;border-radius:11px}
+  .btn.block{width:100%}
+  .btn:disabled{opacity:.5}
+  .iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--ink2)}
+  .iconbtn:hover{background:var(--lav)}
+  label.f{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin:12px 0 5px}
+  .inp{width:100%;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line2);background:var(--paper);font-size:15.5px}
+  .inp:focus{outline:none;border-color:var(--violet);box-shadow:0 0 0 3px rgba(106,61,240,.15)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seg{display:flex;background:var(--mist);border-radius:13px;padding:4px;gap:4px;border:1px solid var(--line)}
+  .seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;border-radius:10px;font-weight:600;font-size:14px;color:var(--ink2)}
+  .seg button.on{background:var(--paper);color:var(--violet);box-shadow:0 2px 8px rgba(30,22,56,.08)}
+  .days{display:flex;gap:6px;flex-wrap:wrap}
+  .days button{min-width:44px;padding:8px 10px;border-radius:11px;border:1.5px solid var(--line2);font-weight:600;font-size:14px;background:var(--paper)}
+  .days button.on{background:var(--violet);border-color:var(--violet);color:#fff}
+
+  /* ---- chips, avatars */
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap;
+        color:var(--rc,var(--ink2));background:color-mix(in srgb,var(--rc,var(--ink2)) 11%,white)}
+  .chip.pick{border:1.5px solid var(--line2);background:var(--paper);color:var(--dim);font-weight:600;padding:7px 12px}
+  .chip.pick.on{border-color:var(--rc);color:var(--rc);background:color-mix(in srgb,var(--rc) 11%,white)}
+  .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+  .t-ok{background:var(--mintBg);color:var(--mint)} .t-bad{background:var(--emberBg);color:var(--ember)}
+  .t-sun{background:var(--sunBg);color:var(--sun)} .t-dim{background:var(--mist);color:var(--dim)} .t-vio{background:var(--lav);color:var(--violet)}
+  .av{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--lav);
+      color:var(--violet);font-family:var(--display);font-weight:600;font-size:15px}
+  .av.s{width:30px;height:30px;font-size:11px}
+  .av.l{width:64px;height:64px;font-size:20px}
+  .av.xl{width:116px;height:116px;font-size:34px}
+
+  /* ---- lists */
+  .item{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--line);width:100%;text-align:left}
+  .item:first-child{border-top:0}
+  button.item:hover{background:#FBFAFE}
+  .item .nm{font-weight:700;font-size:16px}
+  .item .st{font-size:13.5px;color:var(--dim)}
+  .st .ok{color:var(--mint);font-weight:600} .st .bad{color:var(--ember);font-weight:600} .st .sun{color:var(--sun);font-weight:600}
+  .item.away{opacity:.6}
+  .times{text-align:right;font-variant-numeric:tabular-nums;font-size:14px;line-height:1.35;color:var(--ink2)}
+
+  /* ---- today summary ring */
+  .sum{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  .mini{width:62px;height:62px;flex:none}
+  .sum p{font-size:16px;color:var(--ink2)}
+  .sum p b{color:var(--ink)}
+
+  /* ---- grids (attendance, duties) */
+  .gridwrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
+  table.g{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:100%}
+  table.g th,table.g td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;background:var(--paper)}
+  table.g th{font-weight:600;color:var(--dim);font-size:12.5px;position:sticky;top:0}
+  table.g th .av{margin:0 auto 3px}
+  table.g th.w{text-align:center;min-width:84px}
+  table.g td.d{position:sticky;left:0;z-index:1;white-space:nowrap;font-weight:700;border-right:1px solid var(--line)}
+  table.g td.d span{font-weight:500;color:var(--dim);margin-left:4px}
+  table.g tr.sun td{background:#FCFBFF}
+  table.g tr.fut td:not(.d){opacity:.72}
+  table.g tr.click{cursor:pointer}
+  table.g tr.click:hover td{background:#F8F5FF}
+  table.g td.cell{cursor:pointer;text-align:center;font-variant-numeric:tabular-nums;line-height:1.35}
+  table.g td.cell:hover{background:#F8F5FF}
+  table.g td.wn{color:var(--sun);font-size:12.5px;font-weight:600;padding-top:0}
+  .late{color:var(--ember);font-weight:700}
+  .rb{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:12.5px;color:var(--rc);white-space:nowrap}
+  .legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+
+  /* ---- month switcher */
+  .month{display:flex;align-items:center;gap:2px;background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:3px}
+  .month span{min-width:118px;text-align:center;font-weight:700;font-size:14.5px}
+
+  /* ---- staff cards (ID-card style) */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+  .idc{position:relative;background:var(--paper);border-radius:18px;border:1px solid var(--line);padding:22px 14px 14px;text-align:left;width:100%;
+       display:grid;grid-template-columns:64px 1fr;gap:4px 12px;overflow:hidden}
+  .idc::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(90deg,#7B54FF,#4423B8)}
+  .idc::after{content:"";position:absolute;top:13px;left:50%;width:34px;height:5px;margin-left:-17px;border-radius:5px;background:var(--line)}
+  .idc .av{grid-row:span 2}
+  .idc .nm{font-weight:800;font-size:17px;line-height:1.2;margin-top:4px}
+  .idc .roles{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+  .idc .meta{grid-column:1 / -1;display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;padding-top:10px;border-top:1px dashed var(--line2);font-size:13px;color:var(--ink2)}
+  .idc .meta span{display:inline-flex;align-items:center;gap:5px}
+  .nocard{color:var(--sun);font-weight:700}
+
+  /* ---- sheet (bottom sheet on phones, dialog on wide screens) */
+  .sheet{position:fixed;inset:0;z-index:40;background:rgba(30,22,56,.42);display:none;align-items:flex-end;justify-content:center}
+  .sheet.show{display:flex}
+  .sheet .pane{background:var(--paper);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:24px 24px 0 0;
+               padding:8px 18px calc(18px + env(safe-area-inset-bottom));animation:up .22s ease-out}
+  .sheet .grab{width:42px;height:5px;border-radius:5px;background:var(--line2);margin:4px auto 10px}
+  .sheet .shead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .sheet .shead h3{font-family:var(--display);font-weight:600;font-size:18px}
+  .sfoot{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
+  .sfoot .left{margin-right:auto;display:flex;gap:8px;flex-wrap:wrap}
+  @keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+  @media (min-width:720px){ .sheet{align-items:center} .sheet .pane{border-radius:24px;max-height:86vh} }
+  .menu .item{padding:13px 4px;font-weight:600;gap:12px}
+  .menu .item .ic{color:var(--violet)}
+
+  /* ---- worker form */
+  .photo{display:flex;align-items:center;gap:16px;margin:6px 0 4px}
+  .cardbox{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:1.5px dashed var(--line2)}
+  .cardbox.ok{border-style:solid;border-color:color-mix(in srgb,var(--mint) 45%,white);background:var(--mintBg)}
+  .cardno{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.06em}
+  .listen{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--lav);margin-top:10px;font-weight:600;color:var(--violet)}
+  .pulse{width:34px;height:34px;border-radius:50%;border:3px solid var(--violet);box-shadow:0 0 0 0 rgba(106,61,240,.5);animation:pulse 1.4s infinite;flex:none;display:grid;place-items:center}
+  @keyframes pulse{to{box-shadow:0 0 0 14px rgba(106,61,240,0)}}
+  .icons{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .icons button{aspect-ratio:1;border-radius:12px;border:1.5px solid var(--line2);display:grid;place-items:center;color:var(--ink2)}
+  .icons button.on{border-color:var(--violet);color:var(--violet);background:var(--lav)}
+  .swatches{display:flex;gap:10px;flex-wrap:wrap}
+  .swatches button{width:34px;height:34px;border-radius:50%;background:var(--sw);border:3px solid var(--paper);box-shadow:0 0 0 1.5px var(--line2)}
+  .swatches button.on{box-shadow:0 0 0 2.5px var(--sw)}
+  .switch{display:flex;align-items:flex-start;gap:12px;padding:12px 0}
+  .switch input{width:20px;height:20px;accent-color:var(--violet);margin-top:2px;flex:none}
+  .stepper{display:flex;align-items:center;gap:6px}
+  .stepper b{min-width:34px;text-align:center;font-family:var(--display);font-size:18px}
+  .stepper .iconbtn{border:1.5px solid var(--line2);font-size:20px;font-weight:600;color:var(--violet)}
+  .seg.stack button{flex-direction:column;gap:3px;font-size:13px;padding:8px 4px}
+  .bar2{height:6px;border-radius:6px;background:var(--mist);overflow:hidden;margin-top:6px}
+  .bar2 i{display:block;height:100%;background:var(--violet);border-radius:6px}
+  .bar2.over i{background:var(--ember)}
+
+  /* ---- login */
+  #login{min-height:100vh;display:grid;place-items:center;padding:24px}
+  #login .box{width:100%;max-width:340px;text-align:center}
+  #login .tile{width:64px;height:64px;border-radius:17px;margin:0 auto 16px}
+  #login .tile b{font-size:26px} #login .tile i{font-size:10px;top:6px;left:8px}
+  #login h1{margin-bottom:4px}
+  #pin{text-align:center;font-family:var(--display);font-size:24px;letter-spacing:.35em;margin:18px 0 10px}
+
+  #toast{position:fixed;left:50%;bottom:calc(var(--navh) + 18px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;display:none;
+         background:var(--ink);color:#fff;padding:11px 16px;border-radius:13px;font-size:14px;font-weight:600;max-width:92vw;text-align:center}
+  #busy{position:fixed;top:0;left:0;right:0;height:3px;z-index:70;display:none;background:linear-gradient(90deg,var(--glow),var(--violet))}
+
+  /* ---- print */
+  #printArea{display:none}
+  @media print{
+    body.printing > *:not(#printArea){display:none !important}
+    body.printing #printArea{display:block}
+    @page{size:A4;margin:12mm}
+  }
+  .slip{font-family:var(--ui);font-size:14px;color:#111}
+  .slip table{width:100%;border-collapse:collapse;margin-top:12px}
+  .slip td,.slip th{border:1px solid #999;padding:8px;text-align:left}
+  @media (prefers-reduced-motion: reduce){ .pulse,.sheet .pane{animation:none} }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<!-- Icons: Lucide (ISC licence) https://lucide.dev -->
+<symbol id="i-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8.32a7.43 7.43 0 0 1 0 7.36" /> <path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58" /> <path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8" /> <path d="M16.37 2a20.16 20.16 0 0 1 0 20" /></symbol>
+<symbol id="i-smartphone-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="12" x="2" y="6" rx="1" /> <path d="M13 8.32a7.43 7.43 0 0 1 0 7.36" /> <path d="M16.46 6.21a11.76 11.76 0 0 1 0 11.58" /> <path d="M19.91 4.1a15.91 15.91 0 0 1 .01 15.8" /></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /> <path d="M12 2v2" /> <path d="M12 20v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="m17.66 17.66 1.41 1.41" /> <path d="M2 12h2" /> <path d="M20 12h2" /> <path d="m6.34 17.66-1.41 1.41" /> <path d="m19.07 4.93-1.41 1.41" /></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
+<symbol id="i-sunrise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8" /> <path d="m4.93 10.93 1.41 1.41" /> <path d="M2 18h2" /> <path d="M20 18h2" /> <path d="m19.07 10.93-1.41 1.41" /> <path d="M22 22H2" /> <path d="m8 6 4-4 4 4" /> <path d="M16 18a4 4 0 0 0-8 0" /></symbol>
+<symbol id="i-sunset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10V2" /> <path d="m4.93 10.93 1.41 1.41" /> <path d="M2 18h2" /> <path d="M20 18h2" /> <path d="m19.07 10.93-1.41 1.41" /> <path d="M22 22H2" /> <path d="m16 6-4 4-4-4" /> <path d="M16 18a4 4 0 0 0-8 0" /></symbol>
+<symbol id="i-log-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 17 5-5-5-5" /> <path d="M15 12H3" /> <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></symbol>
+<symbol id="i-log-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5" /> <path d="M21 12H9" /> <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></symbol>
+<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol>
+<symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-volume-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" /></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
+<symbol id="i-lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 9.9-1" /></symbol>
+<symbol id="i-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+<symbol id="i-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4" /> <path d="m18 2 4 4-4 4" /> <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" /> <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" /> <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" /></symbol>
+<symbol id="i-calendar-days" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="M8 13h.01" /> <path d="M12 13h.01" /> <path d="M16 13h.01" /> <path d="M8 17h.01" /> <path d="M12 17h.01" /> <path d="M16 17h.01" /></symbol>
+<symbol id="i-tree-palm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4" /> <path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3" /> <path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35" /> <path d="M11 15.5c.5 2.5-.17 4.5-1 6.5h4c2-5.5-.5-12-1-14" /></symbol>
+<symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
+<symbol id="i-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></symbol>
+<symbol id="i-rotate-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></symbol>
+<symbol id="i-id-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 19a4 4 0 00-8 0" /> <path d="M16 10h2" /> <path d="M16 14h2" /> <circle cx="9" cy="12" r="3" /> <rect x="2" y="5" width="20" height="14" rx="2" /></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></symbol>
+<symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></symbol>
+<symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" /></symbol>
+<symbol id="i-key-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /> <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="19" x2="19" y1="8" y2="14" /> <line x1="22" x2="16" y1="11" y2="11" /></symbol>
+<symbol id="i-user-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="17" x2="22" y1="8" y2="13" /> <line x1="22" x2="17" y1="8" y2="13" /></symbol>
+<symbol id="i-calendar-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v3" /> <path d="m2 2 20 20" /> <path d="M21 9h-5.5" /> <path d="M3 9h6" /> <path d="M3.586 3.586A2 2 0 003 5v14a2 2 0 002 2h14a2 2 0 001.414-.586" /> <path d="M8.656 3H19a2 2 0 012 2v10.344" /></symbol>
+<symbol id="i-calendar-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="m9 15 2 2 4-4" /></symbol>
+<symbol id="i-badge-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /> <path d="m16 9-5.5 5.5L8 12" /></symbol>
+<symbol id="i-circle-check-big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335" /> <path d="m9 11 3 3L22 4" /></symbol>
+<symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14" /> <path d="M5 2h14" /> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></symbol>
+<symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 16v-4" /> <path d="M12 8h.01" /></symbol>
+<symbol id="i-wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /></symbol>
+<symbol id="i-image-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5h6" /> <path d="M19 2v6" /> <path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /> <circle cx="9" cy="9" r="2" /></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></symbol>
+<symbol id="i-user-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5" /> <path d="M20 21a8 8 0 0 0-16 0" /></symbol>
+<symbol id="i-scan-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <path d="M7 12h10" /></symbol>
+<symbol id="i-banknote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01M18 12h.01" /></symbol>
+<symbol id="i-hand-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" /> <path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" /> <path d="m2 16 6 6" /> <circle cx="16" cy="9" r="2.9" /> <circle cx="6" cy="5" r="3" /></symbol>
+<symbol id="i-ticket-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-clipboard-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" /></symbol>
+<symbol id="i-headset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z" /> <path d="M21 16v2a4 4 0 0 1-4 4h-5" /></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16" /> <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" /></symbol>
+<symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" /> <path d="M20.054 15.987H3.946" /></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
+<symbol id="i-notebook-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-coffee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2" /> <path d="M14 2v2" /> <path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" /> <path d="M6 2v2" /></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></symbol>
+</svg>
+<div id="busy"></div>
+
+<div id="login">
+  <div class="box">
+    <div class="tile"><i>54</i><b>Xe</b></div>
+    <h1>Xenon WMS</h1>
+    <p class="muted">Staff, duties and attendance</p>
+    <input id="pin" class="inp" type="password" inputmode="numeric" placeholder="PIN" autocomplete="current-password" aria-label="Admin PIN">
+    <button class="btn block" id="loginBtn">Open</button>
+    <p id="loginErr" style="color:var(--ember);margin-top:12px;min-height:22px"></p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header class="bar">
+    <div class="brand"><span class="tile"><i>54</i><b>Xe</b></span>Xenon WMS</div>
+    <div class="hbtns">
+      <button class="hbtn" data-go="pay"><svg class="ic"><use href="#i-wallet"/></svg><span>Pay</span></button>
+      <button class="hbtn" data-go="settings"><svg class="ic"><use href="#i-settings"/></svg><span>Settings</span></button>
+    </div>
+  </header>
+  <main>
+    <div id="oldApi" class="bad-banner" hidden><b>Your Apps Script is still an old version.</b> Open Apps Script → Deploy → Manage deployments → ✎ → Version: <b>New version</b> → Deploy. Then reload this page.</div>
+    <div id="view"></div>
+  </main>
+  <nav class="tabs" aria-label="Sections">
+    <button data-go="today"><svg class="ic"><use href="#i-house"/></svg>Today</button>
+    <button data-go="att"><svg class="ic"><use href="#i-clock"/></svg>Attendance</button>
+    <button data-go="duty"><svg class="ic"><use href="#i-shuffle"/></svg>Duties</button>
+    <button data-go="leave"><svg class="ic"><use href="#i-tree-palm"/></svg>Leave</button>
+    <button data-go="staff"><svg class="ic"><use href="#i-users"/></svg>Staff</button>
+  </nav>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="pane" id="pane"></div></div>
+<div id="toast" role="status"></div>
+<div id="printArea"></div>
+
+<script>
+/* The Apps Script URL is set once in config.js (same folder). */
+const API_URL = String(window.XENON_API_URL || "").trim();
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ic = (n, cls) => `<svg class="ic ${cls || ""}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const ss = { get(k){ try{ return sessionStorage.getItem(k) || ""; }catch(e){ return ""; } }, set(k, v){ try{ sessionStorage.setItem(k, v); }catch(e){} },
+             del(k){ try{ sessionStorage.removeItem(k); }catch(e){} } };
+const pad = n => String(n).padStart(2, "0");
+const localDate = (d = new Date()) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const rs = n => "Rs. " + Number(n || 0).toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = n => (Math.round(n * 10) / 10).toString();
+const DAYS = [["mon","Mon"],["tue","Tue"],["wed","Wed"],["thu","Thu"],["fri","Fri"],["sat","Sat"],["sun","Sun"]];
+const DAYLONG = { mon:"Monday", tue:"Tuesday", wed:"Wednesday", thu:"Thursday", fri:"Friday", sat:"Saturday", sun:"Sunday", none:"None" };
+
+let PIN = ss.get("xwms_pin"), D = null, PH = {}, VIEW = "today", MONTH = localDate().slice(0, 7);
+
+/* ---------------------------------------------------- api */
+async function api(payload){
+  $("busy").style.display = "block";
+  try{
+    const r = await fetch(API_URL, { method: "POST", body: JSON.stringify(Object.assign({ pin: PIN }, payload)) });
+    return await r.json();
+  }catch(e){ return { ok: false, message: "No connection. Check the internet." }; }
+  finally{ $("busy").style.display = "none"; }
+}
+async function act(payload, okMsg){
+  const r = await api(payload);
+  if(r.ok){ if(okMsg) toast(okMsg); await refresh(); } else toast(r.message || "That didn't work");
+  return r;
+}
+function toast(m){ const t = $("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", 2800); }
+
+async function login(){
+  PIN = $("pin").value.trim() || PIN;
+  $("loginErr").textContent = "";
+  $("loginBtn").disabled = true;
+  const r = await api({ action: "dashboard", month: MONTH });
+  $("loginBtn").disabled = false;
+  if(!r.ok){ $("loginErr").textContent = r.message === "Wrong PIN" ? "That PIN is not right." : (r.message || "Could not connect"); return; }
+  ss.set("xwms_pin", PIN);
+  $("login").hidden = true; $("app").hidden = false;
+  setData(r);
+  loadPhotos();
+  render();
+}
+async function refresh(){
+  const r = await api({ action: "dashboard", month: MONTH });
+  if(!r.ok){ toast(r.message || "Could not load"); return; }
+  setData(r); render();
+}
+async function loadPhotos(){ const r = await api({ action: "photos" }); if(r.ok){ PH = r.photos || {}; render(); } }
+function setData(r){
+  D = r;
+  $("oldApi").hidden = r.api >= 3;
+  if(!(r.api >= 3)){       // old backend: keep the page usable enough to show the message
+    D.roles = []; D.workers = (r.workers || []).filter(w => w.type !== "contract").map(w => Object.assign({ roles: [] }, w));
+    D.todayView = { list: [], free: [], off: [], warnings: [] }; D.todayAtt = {}; D.todayExpected = {}; D.todayLeaves = {};
+    D.duties = {}; D.leaveSummary = []; D.today = localDate(); D.offDays = D.offDays || []; D.lastCard = null;
+  }
+  MONTH = r.month;
+}
+
+/* ---------------------------------------------------- helpers */
+const W = id => D.workers.find(w => w.id === id);
+const wname = id => (W(id) || {}).name || id;
+const active = () => D.workers.filter(w => w.active);
+const ROLE = id => D.roles.find(r => r.id === id);
+const activeRoles = () => D.roles.filter(r => r.active);
+function initials(n){ return String(n || "?").split(/\s+/).map(s => s[0]).join("").slice(0, 2).toUpperCase(); }
+function avatar(id, cls){
+  const w = W(id) || { name: id };
+  return PH[id] ? `<img class="av ${cls || ""}" src="${PH[id]}" alt="">` : `<span class="av ${cls || ""}">${esc(initials(w.name))}</span>`;
+}
+function roleChip(id, label){
+  const r = ROLE(id);
+  if(!r) return label ? `<span class="chip">${esc(label)}</span>` : "";
+  return `<span class="chip" style="--rc:var(--c-${r.color})">${ic(r.icon)}${esc(r.name)}</span>`;
+}
+function fmt12(t){ if(!t) return ""; let [h, m] = t.split(":").map(Number); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; return `${h}:${pad(m)} ${ap}`; }
+const fmtDay = ds => new Date(ds + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const fmtLong = ds => new Date(ds + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+const fmtMonth = m => new Date(m + "-01T12:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+const wd = ds => new Date(ds + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" });
+const dim = m => new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate();
+const dstr = (m, d) => m + "-" + pad(d);
+const mins = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+const nowMins = () => mins(D.now || "00:00");
+function leaveText(l){
+  if(!l) return "";
+  if(l.type === "am") return `Morning off, in at ${fmt12(l.time)}`;
+  if(l.type === "pm") return `Afternoon off, out at ${fmt12(l.time)}`;
+  if(l.type === "half") return "Half day";
+  return "Leave";
+}
+// Workers to show for the chosen month: active ones who had joined, plus removed ones with records that month.
+function monthWorkers(){
+  const end = dstr(D.month, dim(D.month));
+  const has = id => D.attendance.some(a => a.workerId === id) || D.leaves.some(l => l.workerId === id) ||
+    D.advances.some(a => a.workerId === id) || D.salary.some(s => s.workerId === id) ||
+    Object.values(D.duties).some(v => (v.list || []).some(x => x.workerId === id));
+  return D.workers.filter(w => (w.active && (!w.since || w.since <= end)) || has(w.id));
+}
+function monthNav(){
+  return `<div class="month"><button class="iconbtn" onclick="shiftMonth(-1)" aria-label="Previous month">${ic("chevron-left")}</button>
+    <span>${fmtMonth(D.month)}</span><button class="iconbtn" onclick="shiftMonth(1)" aria-label="Next month">${ic("chevron-right")}</button></div>`;
+}
+async function shiftMonth(n){
+  const d = new Date(+MONTH.slice(0, 4), +MONTH.slice(5, 7) - 1 + n, 1);
+  MONTH = d.getFullYear() + "-" + pad(d.getMonth() + 1);
+  await refresh();
+}
+
+/* ---------------------------------------------------- sheet */
+function openSheet(title, body, foot){
+  $("pane").innerHTML = `<div class="grab"></div><div class="shead"><h3>${esc(title)}</h3>
+    <button class="iconbtn" onclick="closeSheet()" aria-label="Close">${ic("x")}</button></div>
+    <div class="sbody">${body}</div>${foot ? `<div class="sfoot">${foot}</div>` : ""}`;
+  $("sheet").classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+function closeSheet(){ $("sheet").classList.remove("show"); document.body.style.overflow = ""; stopListening(); stopPhoneScan(); }
+$("sheet").addEventListener("click", e => { if(e.target === $("sheet")) closeSheet(); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && $("sheet").classList.contains("show")) closeSheet(); });
+
+/* ---------------------------------------------------- navigation */
+function go(v){ VIEW = v; render(); window.scrollTo(0, 0); }
+document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+function render(){
+  if(!D) return;
+  document.querySelectorAll("[data-go]").forEach(b => b.classList.toggle("on", b.dataset.go === VIEW));
+  const V = { today: vToday, att: vAtt, duty: vDuty, leave: vLeave, staff: vStaff, pay: vPay, settings: vSettings };
+  $("view").innerHTML = V[VIEW]();
+}
+
+/* ==================================================== TODAY */
+function statusOf(id, kind, reason){
+  const a = D.todayAtt[id] || {}, e = D.todayExpected[id] || {}, l = D.todayLeaves[id];
+  if(kind === "off" && !a.inTime) return reason === "Leave" ? `<span>On leave${l && l.note ? ", " + esc(l.note) : ""}</span>` : esc(reason);
+  let s;
+  if(a.inTime) s = a.late ? `<span class="bad">Late, in ${fmt12(a.inTime)}</span>` : `<span class="ok">In ${fmt12(a.inTime)}</span>`;
+  else if(e.half === "am") s = `<span class="sun">Morning off, comes at ${fmt12(e.inTime)}</span>`;
+  else if(e.inTime && nowMins() > mins(e.inTime) + (+D.settings.GRACE_MIN || 0)) s = `<span class="bad">Not in yet, due ${fmt12(e.inTime)}</span>`;
+  else s = `Not in yet, due ${fmt12(e.inTime)}`;
+  if(a.outTime) s += a.early ? `, <span class="bad">left early ${fmt12(a.outTime)}</span>` : `, out ${fmt12(a.outTime)}`;
+  else if(e.half === "pm") s += `, <span class="sun">leaves at ${fmt12(e.outTime)}</span>`;
+  return s;
+}
+function vToday(){
+  const v = D.todayView;
+  const rows = v.list.map(x => Object.assign({ kind: "duty" }, x)).concat(v.free.map(x => Object.assign({ kind: "free" }, x)), v.off.map(x => Object.assign({ kind: "off" }, x)));
+  const working = v.list.length + v.free.length;
+  const inN = rows.filter(x => x.kind !== "off" && (D.todayAtt[x.workerId] || {}).inTime).length;
+  const lateN = rows.filter(x => (D.todayAtt[x.workerId] || {}).late).length;
+  const away = v.off.map(x => `${esc(x.name)} ${x.reason === "Weekly off" ? "has the weekly off" : x.reason === "Leave" ? "is on leave" : "is not working"}`);
+  const frac = working ? inN / working : 0, C = 2 * Math.PI * 25;
+  let body;
+  if(v.holiday) body = `<div class="panel"><div class="row">${ic("sparkles")}<b>Holiday: ${esc(v.holiday)}</b></div><p class="sub" style="margin-top:6px">No duties today.</p></div>`;
+  else if(!active().length) body = `<div class="panel"><h2>No staff yet</h2><p class="muted">Register your first worker to start.</p>
+      <button class="btn" style="margin-top:12px" onclick="go('staff');editWorker()">${ic("user-plus")}Register a worker</button></div>`;
+  else body = `
+    <div class="sum">
+      <svg class="mini" viewBox="0 0 62 62" aria-hidden="true"><circle cx="31" cy="31" r="25" fill="none" stroke="var(--line)" stroke-width="6"/>
+        <circle cx="31" cy="31" r="25" fill="none" stroke="var(--violet)" stroke-width="6" stroke-linecap="round" transform="rotate(-90 31 31)"
+          stroke-dasharray="${(C * frac).toFixed(1)} ${C.toFixed(1)}"/>
+        <text x="31" y="36" text-anchor="middle" font-family="Unbounded" font-weight="600" font-size="14" fill="var(--ink)">${inN}/${working}</text></svg>
+      <p><b>${inN} of ${working}</b> checked in${lateN ? `, <b style="color:var(--ember)">${lateN} late</b>` : ""}.${away.length ? " " + away.join(". ") + "." : ""}</p>
+    </div>
+    ${(v.warnings || []).map(w => `<div class="warn">${ic("triangle-alert")}<span>${esc(w)}</span></div>`).join("")}
+    <div class="panel flush">${rows.map(x => {
+      const a = D.todayAtt[x.workerId] || {};
+      return `<button class="item ${x.kind === "off" && !a.inTime ? "away" : ""}" onclick="personSheet('${x.workerId}')">
+        ${avatar(x.workerId)}<div class="grow"><div class="nm">${esc(x.name)}</div><div class="st">${statusOf(x.workerId, x.kind, x.reason)}</div></div>
+        ${x.kind === "duty" ? roleChip(x.roleId, x.role) : x.kind === "free" ? `<span class="sub">No duty</span>` : ""}</button>`;
+    }).join("")}</div>
+    <p class="sub">${v.fixed ? `${ic("lock")} Today's duties were fixed at the first check-in. They only change if someone goes on leave.` : "Today's duties are fixed when the first person checks in."} Tap a person for leave, half days and times.</p>`;
+  return `<div class="phead"><h1>${fmtLong(D.today)}</h1></div>${body}`;
+}
+function personSheet(id){
+  const w = W(id), l = D.todayLeaves[id], a = D.todayAtt[id] || {};
+  const mk = (icon, label, fn) => `<button class="item" onclick="${fn}">${ic(icon)}<span class="grow">${label}</span>${ic("chevron-right")}</button>`;
+  openSheet(w.name, `<div class="row" style="margin:4px 0 8px">${avatar(id, "l")}<div><div class="sub">${esc(w.inTime)}–${esc(w.outTime)}</div>
+      <div>${l ? `<span class="tag t-sun">${esc(leaveText(l))}</span>` : a.inTime ? `<span class="tag ${a.late ? "t-bad" : "t-ok"}">In ${fmt12(a.inTime)}</span>` : `<span class="tag t-dim">Not in yet</span>`}</div></div></div>
+    <div class="menu">
+      ${l ? mk("rotate-ccw", "Remove today's leave", `delLeave('${D.today}','${id}',true)`) : ""}
+      ${mk("calendar-off", "Mark leave for today", `leaveSheet('${id}','full')`)}
+      ${mk("sunrise", "Give a morning off (comes in later)", `leaveSheet('${id}','am')`)}
+      ${mk("sunset", "Give an afternoon off (leaves early)", `leaveSheet('${id}','pm')`)}
+      ${mk("clock", "Edit today's in and out times", `editAtt('${D.today}','${id}')`)}
+      ${mk("shuffle", "Change today's duties", `editDay('${D.today}')`)}
+      ${mk("id-card", "Open profile", `editWorker('${id}')`)}
+    </div>`);
+}
+
+/* ==================================================== ATTENDANCE */
+function vAtt(){
+  const m = D.month, n = dim(m), ws = monthWorkers();
+  if(!ws.length) return `<div class="phead"><h1>Attendance</h1>${monthNav()}</div><div class="panel"><p class="muted">No staff in this month.</p></div>`;
+  const sum = {}; ws.forEach(w => sum[w.id] = { p: 0, late: 0, early: 0, lv: 0 });
+  let body = "";
+  for(let d = 1; d <= n; d++){
+    const ds = dstr(m, d), du = D.duties[ds] || {}, hol = du.holiday;
+    const sunday = new Date(ds + "T12:00:00").getDay() === 0;
+    body += `<tr class="${sunday ? "sun" : ""} ${ds > D.today ? "fut" : ""}"><td class="d">${d}<span>${wd(ds)}</span></td>`;
+    if(hol){ body += `<td colspan="${ws.length}"><span class="tag t-sun">${esc(hol)}</span></td></tr>`; continue; }
+    body += ws.map(w => {
+      const a = D.attendance.find(x => x.date === ds && x.workerId === w.id), l = D.leaves.find(x => x.date === ds && x.workerId === w.id);
+      const off = (du.off || []).some(x => x.workerId === w.id && x.reason === "Weekly off");
+      let c = "";
+      if(l){ c = `<span class="tag ${l.type === "full" ? "t-vio" : "t-sun"}">${l.type === "full" ? "Leave" : l.type === "am" ? "AM off" : l.type === "pm" ? "PM off" : "½ day"}</span>`; sum[w.id].lv += l.type === "full" ? 1 : .5; }
+      else if(off && !a) c = `<span class="tag t-dim">Off</span>`;
+      if(a){
+        sum[w.id].p++; if(a.late) sum[w.id].late++; if(a.early) sum[w.id].early++;
+        c += `<div class="${a.late ? "late" : ""}">${a.inTime || "—"}</div><div class="${a.early ? "late" : ""}">${a.outTime || "…"}</div>`;
+      }
+      if(!c) c = `<span class="muted">${ds > D.today ? "" : "—"}</span>`;
+      return `<td class="cell" onclick="editAtt('${ds}','${w.id}')">${c}</td>`;
+    }).join("") + "</tr>";
+  }
+  return `<div class="phead"><h1>Attendance</h1>${monthNav()}</div>
+    <div class="panel"><div class="gridwrap"><table class="g">
+      <tr><th></th>${ws.map(w => `<th class="w">${avatar(w.id, "s")}${esc(w.name.split(" ")[0])}${w.active ? "" : " (removed)"}</th>`).join("")}</tr>
+      ${body}
+      <tr><td class="d">Total</td>${ws.map(w => { const s = sum[w.id];
+        return `<td class="sub" style="text-align:center">${s.p} in<br>${s.late ? `<span class="late">${s.late} late</span><br>` : ""}${s.early ? `<span class="late">${s.early} early</span><br>` : ""}${s.lv ? num(s.lv) + " leave" : ""}</td>`; }).join("")}</tr>
+    </table></div>
+    <p class="sub" style="margin-top:10px">Each cell shows the in time above the out time. Red means late or left early. Tap a cell to add or fix times. Salary never changes automatically.</p></div>`;
+}
+function editAtt(ds, id){
+  const a = D.attendance.find(x => x.date === ds && x.workerId === id) || (ds === D.today ? D.todayAtt[id] : null) || {};
+  openSheet(`${wname(id)}, ${fmtDay(ds)}`, `
+    <div class="two"><div><label class="f" for="eaIn">In time</label><input class="inp" type="time" id="eaIn" value="${esc(a.inTime || "")}"></div>
+    <div><label class="f" for="eaOut">Out time</label><input class="inp" type="time" id="eaOut" value="${esc(a.outTime || "")}"></div></div>
+    <label class="f" for="eaNote">Note</label><input class="inp" id="eaNote" value="${esc(a.note || "")}" placeholder="For example: forgot card">
+    <p class="sub" style="margin-top:10px">Late and early are worked out from ${esc(wname(id))}'s own hours, including any half day.</p>`,
+    `${a.inTime || a.outTime ? `<span class="left"><button class="btn danger small" onclick="saveAtt('${ds}','${id}',true)">${ic("trash-2")}Delete</button></span>` : ""}
+     <button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveAtt('${ds}','${id}')">Save times</button>`);
+}
+async function saveAtt(ds, id, del){
+  if(del && !confirm("Delete this attendance record?")) return;
+  const r = await act({ action: "editAttendance", date: ds, workerId: id, inTime: del ? "" : $("eaIn").value, outTime: del ? "" : $("eaOut").value,
+                        note: del ? "" : $("eaNote").value }, del ? "Deleted" : "Times saved");
+  if(r.ok) closeSheet();
+}
+
+/* ==================================================== DUTIES */
+function vDuty(){
+  const m = D.month, n = dim(m), ws = monthWorkers(), roles = activeRoles();
+  let body = "";
+  for(let d = 1; d <= n; d++){
+    const ds = dstr(m, d), du = D.duties[ds] || { list: [], off: [], free: [], warnings: [] };
+    const sunday = new Date(ds + "T12:00:00").getDay() === 0;
+    const mark = du.manual ? ` ${ic("pencil")}` : du.fixed && !du.none ? ` ${ic("lock")}` : "";
+    body += `<tr class="${sunday ? "sun" : ""} ${ds > D.today ? "fut" : ""} ${du.holiday ? "" : "click"}" ${du.holiday ? "" : `onclick="editDay('${ds}')"`}>
+      <td class="d">${d}<span>${wd(ds)}</span><span style="color:var(--violet)">${mark}</span></td>`;
+    if(du.holiday) body += `<td colspan="${ws.length}"><span class="tag t-sun">${esc(du.holiday)}</span></td>`;
+    else if(du.none) body += `<td colspan="${ws.length}" class="sub">No record</td>`;
+    else body += ws.map(w => {
+      const a = (du.list || []).find(x => x.workerId === w.id);
+      if(a){ const r = ROLE(a.roleId); return `<td style="text-align:center">${r ? `<span class="rb" style="--rc:var(--c-${r.color})">${ic(r.icon)}${esc(r.name)}</span>` : esc(a.role)}</td>`; }
+      const o = (du.off || []).find(x => x.workerId === w.id);
+      if(o) return `<td style="text-align:center"><span class="tag t-dim">${o.reason === "Weekly off" ? "Off" : esc(o.reason)}</span></td>`;
+      if((du.free || []).some(x => x.workerId === w.id)) return `<td style="text-align:center" class="sub">No duty</td>`;
+      return `<td></td>`;
+    }).join("");
+    body += "</tr>";
+    if((du.warnings || []).length) body += `<tr><td class="d"></td><td class="wn" colspan="${ws.length}">${ic("triangle-alert")} ${du.warnings.map(esc).join(" ")}</td></tr>`;
+  }
+  return `<div class="phead"><h1>Duties</h1>${monthNav()}</div>
+    <div class="legend">${roles.map(r => `<span class="chip" style="--rc:var(--c-${r.color})">${ic(r.icon)}${esc(r.name)} <span style="font-weight:500">×${r.need}</span></span>`).join("")}
+      <button class="btn quiet small" onclick="go('settings')">${ic("pencil")}Edit roles</button></div>
+    <div class="panel"><div class="gridwrap"><table class="g">
+      <tr><th></th>${ws.map(w => `<th class="w">${avatar(w.id, "s")}${esc(w.name.split(" ")[0])}</th>`).join("")}</tr>${body}</table></div>
+      <div class="note">Duties go only to people working that day and ticked for the role, shared fairly so each person's duty changes day to day.
+      Places fill in role order: one of each role first, then second places. People on a half day take the last places.
+      ${ic("lock")} past days and today (after the first check-in) stay fixed; future days are a forecast. <b>Tap a day</b> to set it by hand.</div></div>
+    <div class="panel"><div class="spread"><h2 style="margin:0">Weekly off swaps</h2><button class="btn ghost small" onclick="offSheet()">${ic("calendar-days")}Swap a day</button></div>
+      ${(D.offDays || []).length ? `<div style="margin-top:8px">${D.offDays.map(o => `<div class="item" style="padding:9px 0">${avatar(o.workerId, "s")}
+        <div class="grow"><b>${esc(wname(o.workerId))}</b> <span class="sub">off on ${fmtDay(o.date)} instead of ${esc(DAYLONG[(W(o.workerId) || {}).off] || "—")}</span></div>
+        <button class="iconbtn" aria-label="Remove" onclick="delOff('${o.date}','${o.workerId}')">${ic("x")}</button></div>`).join("")}</div>`
+      : `<p class="sub" style="margin-top:6px">No swaps this month. Everyone has their usual weekly off (set in Staff).</p>`}</div>`;
+}
+function editDay(ds){
+  const du = D.duties[ds];
+  if(!du || du.holiday) return toast("That day is a holiday, so there are no duties.");
+  const ids = active().map(w => w.id);
+  (du.list || []).forEach(x => { if(!ids.includes(x.workerId)) ids.push(x.workerId); });
+  const cur = id => { const a = (du.list || []).find(x => x.workerId === id); if(a) return a.roleId;
+                      return (du.free || []).some(x => x.workerId === id) ? "NONE" : "OUT"; };
+  const roles = activeRoles();
+  openSheet(`Duties, ${fmtDay(ds)}`, ids.map(id => {
+      const w = W(id) || { name: id, roles: [] }, c = cur(id);
+      const opts = roles.map(r => `<button type="button" class="chip pick ${c === r.id ? "on" : ""}" style="--rc:var(--c-${r.color})" data-v="${r.id}">${ic(r.icon)}${esc(r.name)}${w.roles.includes(r.id) ? "" : " *"}</button>`).join("")
+        + `<button type="button" class="chip pick ${c === "NONE" ? "on" : ""}" style="--rc:var(--ink2)" data-v="NONE">No duty</button>`
+        + `<button type="button" class="chip pick ${c === "OUT" ? "on" : ""}" style="--rc:var(--dim)" data-v="OUT">Not working</button>`;
+      return `<div style="padding:10px 0;border-top:1px solid var(--line)"><div class="row" style="margin-bottom:8px">${avatar(id, "s")}<b>${esc(w.name)}</b></div>
+        <div class="row pickrow" data-w="${esc(id)}" style="gap:6px">${opts}</div></div>`;
+    }).join("") + `<p class="sub" style="margin-top:10px">* not ticked for this role. ${ds < D.today ? "This corrects the record for a past day." : "This day will keep exactly these duties."}</p>`,
+    `${du.manual ? `<span class="left"><button class="btn ghost small" onclick="autoDay('${ds}')">${ic("rotate-ccw")}Back to automatic</button></span>` : ""}
+     <button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveDay('${ds}')">Save duties</button>`);
+  $("pane").querySelectorAll(".pickrow").forEach(row => row.addEventListener("click", e => {
+    const b = e.target.closest("button"); if(!b) return;
+    row.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  }));
+}
+async function saveDay(ds){
+  const assignments = [...$("pane").querySelectorAll(".pickrow")].map(row => {
+    const on = row.querySelector("button.on"); return { workerId: row.dataset.w, roleId: on ? on.dataset.v : "NONE" }; });
+  const r = await act({ action: "setDutyOverride", date: ds, assignments }, "Duties saved for " + fmtDay(ds));
+  if(r.ok) closeSheet();
+}
+async function autoDay(ds){ const r = await act({ action: "clearDutyOverride", date: ds }, "Back to automatic"); if(r.ok) closeSheet(); }
+function offSheet(){
+  openSheet("Swap a weekly off", `<label class="f">Who</label>${pickWorker("offW")}
+    <label class="f" for="offD">New off day (that week only)</label><input class="inp" type="date" id="offD" value="${D.today}">
+    <p class="sub" style="margin-top:10px">This replaces their usual weekly off for that Monday-to-Sunday week only. Next week goes back to normal.</p>`,
+    `<button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveOff()">Save swap</button>`);
+  wirePick("offW");
+}
+async function saveOff(){ const r = await act({ action: "setOffDay", workerId: picked("offW"), date: $("offD").value }, "Weekly off swapped"); if(r.ok) closeSheet(); }
+async function delOff(ds, id){ await act({ action: "deleteOffDay", date: ds, workerId: id }, "Back to the usual off day"); }
+
+// avatar picker used in sheets
+function pickWorker(key, sel){
+  const list = active();
+  return `<div class="row pick-${key}" style="gap:8px">${list.map((w, i) => `<button type="button" class="chip pick ${(sel ? w.id === sel : i === 0) ? "on" : ""}" style="--rc:var(--violet);padding:4px 12px 4px 4px" data-v="${w.id}">${avatar(w.id, "s")}${esc(w.name.split(" ")[0])}</button>`).join("")}</div>`;
+}
+function wirePick(key, onChange){
+  const row = $("pane").querySelector(".pick-" + key);
+  row.addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return;
+    row.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); if(onChange) onChange(b.dataset.v); });
+}
+const picked = key => { const b = $("pane").querySelector(`.pick-${key} button.on`); return b ? b.dataset.v : ""; };
+
+/* ==================================================== LEAVE */
+function vLeave(){
+  const sums = (D.leaveSummary || []).filter(s => (W(s.workerId) || {}).active);
+  return `<div class="phead"><h1>Leave</h1>${monthNav()}</div>
+    <div class="row" style="margin-bottom:14px"><button class="btn" onclick="leaveSheet()">${ic("plus")}Add leave or half day</button></div>
+    <div class="panel"><h2>Balance</h2>${sums.length ? sums.map(s => {
+      const pct = s.allowance ? Math.min(100, 100 * s.used / s.allowance) : 0;
+      return `<div class="item" style="padding:10px 0">${avatar(s.workerId, "s")}<div class="grow"><div class="spread"><b>${esc(wname(s.workerId))}</b>
+        <span class="sub">${s.allowance === null ? `${num(s.used)} used ${s.per === "year" ? "this year" : "this month"}` :
+          s.left < 0 ? `<span class="late">${num(-s.left)} over</span>` : `<b style="color:var(--ink)">${num(s.left)}</b> of ${num(s.allowance)} left`}</span></div>
+        ${s.allowance === null ? `<div class="sub">No allowance set</div>` : `<div class="bar2 ${s.left < 0 ? "over" : ""}"><i style="width:${pct}%"></i></div>
+        <div class="sub">${num(s.used)} used, ${s.per === "year" ? "per year (" + s.period + ")" : "per month"}</div>`}</div></div>`; }).join("")
+      : `<p class="muted">No staff yet.</p>`}<p class="sub" style="margin-top:8px">Half days count as ½. Set allowances in each person's profile.</p></div>
+    <div class="panel"><h2>${fmtMonth(D.month)}</h2>${D.leaves.length ? D.leaves.map(l => `<div class="item" style="padding:9px 0">${avatar(l.workerId, "s")}
+        <div class="grow"><b>${esc(wname(l.workerId))}</b> <span class="sub">${fmtDay(l.date)}</span><div class="sub">${esc(leaveText(l))}</div>${l.note ? `<div class="sub" style="font-style:italic">${esc(l.note)}</div>` : ""}</div>
+        <button class="iconbtn" aria-label="Remove leave" onclick="delLeave('${l.date}','${l.workerId}')">${ic("trash-2")}</button></div>`).join("")
+      : `<p class="muted">No leave this month.</p>`}</div>
+    <div class="panel"><h2>Holidays</h2>
+      <div class="row" style="margin-bottom:10px"><input class="inp" type="date" id="hoD" style="max-width:170px" aria-label="Holiday date">
+        <input class="inp grow" id="hoN" placeholder="Name, e.g. Il Poya" style="min-width:150px" aria-label="Holiday name">
+        <button class="btn ghost" onclick="addHoliday()">${ic("plus")}Add</button></div>
+      ${D.holidays.length ? D.holidays.slice().reverse().slice(0, 30).map(h => `<div class="spread" style="padding:7px 0;border-top:1px solid var(--line)">
+        <span><b>${fmtDay(h.date)}</b> <span class="sub">${h.date.slice(0, 4)}</span> ${esc(h.name)}</span>
+        <button class="iconbtn" aria-label="Remove holiday" onclick="delHoliday('${h.date}')">${ic("x")}</button></div>`).join("")
+      : `<p class="muted">No holidays yet. Add Poya days and days the institute is closed.</p>`}
+      <p class="sub" style="margin-top:8px">Holidays have no duties and don't count as absent.</p></div>`;
+}
+function leaveSheet(id, type){
+  type = type || "full";
+  const w0 = W(id) || active()[0];
+  if(!w0) return toast("Register staff first");
+  openSheet("Add leave", `<label class="f">Who</label>${pickWorker("lvW", w0.id)}
+    <label class="f">Type</label>
+    <div class="seg stack" id="lvT">
+      <button type="button" data-v="full" class="${type === "full" ? "on" : ""}">${ic("calendar-off")}Full day</button>
+      <button type="button" data-v="am" class="${type === "am" ? "on" : ""}">${ic("sunrise")}Morning off</button>
+      <button type="button" data-v="pm" class="${type === "pm" ? "on" : ""}">${ic("sunset")}Afternoon off</button></div>
+    <div class="two"><div><label class="f" for="lvD">Date</label><input class="inp" type="date" id="lvD" value="${D.today}"></div>
+      <div id="lvToBox"><label class="f" for="lvTo">Until (optional)</label><input class="inp" type="date" id="lvTo"></div>
+      <div id="lvTimeBox" hidden><label class="f" for="lvTime" id="lvTimeL">Comes in at</label><input class="inp" type="time" id="lvTime"></div></div>
+    <label class="f" for="lvN">Note</label><input class="inp" id="lvN" placeholder="Optional">
+    <p class="sub" id="lvHelp" style="margin-top:10px"></p>`,
+    `<button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveLeave()">Save leave</button>`);
+  const upd = () => {
+    const t = $("lvT").querySelector(".on").dataset.v, w = W(picked("lvW"));
+    $("lvToBox").hidden = t !== "full"; $("lvTimeBox").hidden = t === "full";
+    $("lvTimeL").textContent = t === "am" ? "Comes in at" : "Leaves at";
+    if(t !== "full"){
+      const a = mins(w.inTime), b = mins(w.outTime), mid = Math.round((a + b) / 2 / 5) * 5;
+      $("lvTime").value = pad(Math.floor(mid / 60)) + ":" + pad(mid % 60);
+    }
+    $("lvHelp").textContent = t === "full" ? "A date range skips holidays and their weekly off. Full-day leave takes them off that day's duties."
+      : t === "am" ? `${w.name} comes in later. Late is counted from this time, and they get one of the last duties.`
+      : `${w.name} leaves earlier. Leaving early is counted from this time, and they get one of the last duties.`;
+  };
+  $("lvT").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; $("lvT").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); upd(); });
+  wirePick("lvW", upd);
+  upd();
+}
+async function saveLeave(){
+  const t = $("lvT").querySelector(".on").dataset.v;
+  if(t === "full" && $("lvTo").value && $("lvTo").value < $("lvD").value) return toast("'Until' is before the date");
+  const r = await act({ action: "addLeave", workerId: picked("lvW"), date: $("lvD").value, toDate: t === "full" ? $("lvTo").value : "",
+                        type: t, time: t === "full" ? "" : $("lvTime").value, note: $("lvN").value });
+  if(r.ok){ toast(r.count > 1 ? `Leave added for ${r.count} days` : t === "full" ? "Leave added" : "Half day added"); closeSheet(); }
+}
+async function delLeave(ds, id, fromSheet){ const r = await act({ action: "deleteLeave", date: ds, workerId: id }, "Leave removed"); if(r.ok && fromSheet) closeSheet(); }
+async function addHoliday(){ if(!$("hoD").value) return toast("Pick a date"); await act({ action: "addHoliday", date: $("hoD").value, name: $("hoN").value || "Holiday" }, "Holiday added"); }
+async function delHoliday(ds){ await act({ action: "deleteHoliday", date: ds }, "Holiday removed"); }
+
+/* ==================================================== STAFF */
+const cardFmt = c => c ? c.match(/.{1,4}/g).join(" ") : "";
+function vStaff(){
+  const list = active(), removed = D.workers.filter(w => !w.active), noCard = list.filter(w => !w.card);
+  return `<div class="phead"><h1>Staff</h1><button class="btn" onclick="editWorker()">${ic("user-plus")}Register</button></div>
+    ${noCard.length ? `<div class="warn" style="align-items:center">${ic("nfc")}<span class="grow">${noCard.length === 1 ? esc(noCard[0].name) + " has" : noCard.length + " people have"} no card linked yet.</span>
+      <button class="btn small" onclick="linkFlow()">Link cards</button></div>` : ""}
+    ${list.length ? `<div class="cards">${list.map(w => `<button class="idc" onclick="editWorker('${w.id}')">${avatar(w.id, "l")}
+        <div><div class="nm">${esc(w.name)}</div><div class="sub">${esc(w.phone || w.id)}</div></div>
+        <div class="roles">${w.roles.filter(id => (ROLE(id) || {}).active).map(id => roleChip(id)).join("") || `<span class="sub">No duties ticked</span>`}</div>
+        <div class="meta"><span>${ic("clock")}${esc(w.inTime)}–${esc(w.outTime)}</span><span>${ic("calendar-off")}${w.off === "none" ? "No weekly off" : "Off " + esc(DAYLONG[w.off])}</span>
+          ${w.card ? `<span>${ic("nfc")}Card linked</span>` : `<span class="nocard">${ic("nfc")}No card</span>`}</div></button>`).join("")}</div>`
+      : `<div class="panel"><h2>Register your first worker</h2><p class="muted">Add their details, take a photo and link their NFC card.</p></div>`}
+    ${removed.length ? `<div class="panel" style="margin-top:14px"><h2>Removed</h2>${removed.map(w => `<div class="item" style="padding:9px 0">${avatar(w.id, "s")}
+      <div class="grow"><b>${esc(w.name)}</b><div class="sub">Records kept. Card not working.</div></div>
+      <button class="btn ghost small" onclick="restoreWorker('${w.id}')">${ic("rotate-ccw")}Restore</button></div>`).join("")}</div>` : ""}`;
+}
+
+let FORM = null;          // worker being edited: {id, photo (new data URL or null), card}
+function editWorker(id){
+  const w = id ? W(id) : { name: "", sayName: "", phone: "", notes: "", inTime: "07:30", outTime: "17:30", off: "none",
+                           roles: activeRoles().map(r => r.id), leaveDays: null, leavePer: "month", since: D.today, card: "" };
+  FORM = { id: id || "", photo: null, card: w.card || "" };
+  const roles = activeRoles();
+  openSheet(id ? w.name : "Register a worker", `
+    <div class="photo"><div id="phPrev">${id && PH[id] ? `<img class="av xl" src="${PH[id]}" alt="">` : `<span class="av xl">${ic("camera")}</span>`}</div>
+      <div><label class="btn ghost small" for="phFile">${ic("camera")}${id && PH[id] ? "Change photo" : "Take or choose photo"}</label>
+        <input type="file" id="phFile" accept="image/*" hidden>
+        <p class="sub" style="margin-top:6px">Shown on the kiosk when they tap in.</p></div></div>
+    <label class="f" for="fwName">Full name</label><input class="inp" id="fwName" value="${esc(w.name)}" maxlength="40" placeholder="e.g. Kasuni Perera">
+    <div class="two"><div><label class="f" for="fwSay">Name the kiosk says</label><input class="inp" id="fwSay" value="${esc(w.sayName)}" placeholder="e.g. Kasuni"></div>
+      <div><label class="f" for="fwPhone">Mobile</label><input class="inp" id="fwPhone" type="tel" value="${esc(w.phone)}" placeholder="07X XXX XXXX"></div></div>
+
+    <label class="f">NFC card</label>
+    <div id="cardArea"></div>
+
+    <div class="two"><div><label class="f" for="fwIn">In time</label><input class="inp" type="time" id="fwIn" value="${esc(w.inTime)}"></div>
+      <div><label class="f" for="fwOut">Out time</label><input class="inp" type="time" id="fwOut" value="${esc(w.outTime)}"></div></div>
+    <label class="f">Weekly off</label>
+    <div class="days" id="fwOff">${DAYS.concat([["none", "None"]]).map(([v, l]) => `<button type="button" data-v="${v}" class="${w.off === v ? "on" : ""}">${l}</button>`).join("")}</div>
+    <label class="f">Duties they can do</label>
+    <div class="row" id="fwRoles" style="gap:6px">${roles.map(r => `<button type="button" class="chip pick ${w.roles.includes(r.id) ? "on" : ""}" style="--rc:var(--c-${r.color})" data-v="${r.id}">${ic(r.icon)}${esc(r.name)}</button>`).join("") || `<span class="sub">Add job roles in Settings first.</span>`}</div>
+    <label class="f" for="fwLeave">Leave allowance</label>
+    <div class="two"><input class="inp" type="number" id="fwLeave" min="0" step="0.5" value="${w.leaveDays ?? ""}" placeholder="Days (optional)">
+      <div class="seg" id="fwPer"><button type="button" data-v="month" class="${w.leavePer !== "year" ? "on" : ""}">Per month</button><button type="button" data-v="year" class="${w.leavePer === "year" ? "on" : ""}">Per year</button></div></div>
+    <div class="two"><div><label class="f" for="fwSince">Joined</label><input class="inp" type="date" id="fwSince" value="${esc(w.since || "")}"></div><div></div></div>
+    <label class="f" for="fwNotes">Notes</label><input class="inp" id="fwNotes" value="${esc(w.notes)}" placeholder="Optional">
+    <p class="sub" style="margin-top:10px">Late is counted after the in time plus ${esc(D.settings.GRACE_MIN)} minutes. Leaving early is before the out time.</p>`,
+    `${id ? `<span class="left"><button class="btn danger small" onclick="removeWorker('${id}')">${ic("user-x")}Remove</button></span>` : ""}
+     <button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" id="fwSave" onclick="saveWorker()">${id ? "Save changes" : "Register"}</button>`);
+  renderCard();
+  $("phFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try{ FORM.photo = await photoFromFile(f); $("phPrev").innerHTML = `<img class="av xl" src="${FORM.photo}" alt="">`; }
+    catch(err){ toast("Couldn't read that photo. Try another one."); }
+  });
+  [["fwOff", false], ["fwPer", false], ["fwRoles", true]].forEach(([k, multi]) => $(k).addEventListener("click", e => {
+    const b = e.target.closest("button"); if(!b) return;
+    if(multi) b.classList.toggle("on"); else $(k).querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  }));
+}
+function renderCard(msg){
+  const c = FORM.card, phone = "NDEFReader" in window;
+  $("cardArea").innerHTML = `<div class="cardbox ${c ? "ok" : ""}">${ic("nfc")}
+      <div class="grow">${c ? `<div class="cardno">${esc(cardFmt(c))}</div><div class="sub">Linked</div>` : `<b>No card yet</b><div class="sub">Link the card they will tap.</div>`}</div>
+      ${c ? `<button type="button" class="btn quiet small" onclick="FORM.card='';renderCard()">Unlink</button>` : ""}</div>
+    <div class="row" style="margin-top:8px;gap:6px">
+      <button type="button" class="btn ghost small" onclick="startListening()">${ic("smartphone-nfc")}Tap it on the kiosk</button>
+      ${phone ? `<button type="button" class="btn ghost small" onclick="phoneScan()">${ic("nfc")}Scan with this phone</button>` : ""}
+      <button type="button" class="btn quiet small" onclick="typeCard()">Type the number</button></div>
+    <div id="cardMsg">${msg || ""}</div>`;
+}
+function typeCard(){
+  $("cardMsg").innerHTML = `<div class="row" style="margin-top:8px"><input class="inp grow" id="cardTyped" placeholder="Card number" autocomplete="off">
+    <button type="button" class="btn small" onclick="useCard($('cardTyped').value)">Use</button></div>`;
+  $("cardTyped").focus();
+}
+function useCard(raw){
+  const c = String(raw || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+  if(c.length < 4) return toast("That card number is too short");
+  const other = D.workers.find(w => w.card === c && w.id !== FORM.id);
+  if(other) return toast(`This card already belongs to ${other.name}`);
+  FORM.card = c; stopListening(); stopPhoneScan(); renderCard(); toast("Card added. Press Save to keep it.");
+}
+// "Tap it on the kiosk": the kiosk reports unknown cards; we wait for a fresh one.
+let LISTEN = null;
+function startListening(){
+  stopListening();
+  const t0 = Date.now();
+  $("cardMsg").innerHTML = `<div class="listen"><span class="pulse">${ic("nfc")}</span><span class="grow">Tap the card on the kiosk phone now…</span>
+    <button type="button" class="btn quiet small" onclick="stopListening();renderCard()">Stop</button></div>`;
+  LISTEN = setInterval(async () => {
+    if(Date.now() - t0 > 120000){ stopListening(); renderCard(`<p class="sub" style="margin-top:8px">No card seen. Try again.</p>`); return; }
+    const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "lastCard", pin: PIN }) }).then(x => x.json()).catch(() => null);
+    const lc = r && r.lastCard;
+    if(lc && lc.card && lc.agoSec * 1000 <= Date.now() - t0 + 4000) useCard(lc.card);
+  }, 2000);
+}
+function stopListening(){ if(LISTEN){ clearInterval(LISTEN); LISTEN = null; } }
+let NFC_ABORT = null;
+async function phoneScan(){
+  try{
+    NFC_ABORT = new AbortController();
+    const reader = new NDEFReader();
+    await reader.scan({ signal: NFC_ABORT.signal });
+    $("cardMsg").innerHTML = `<div class="listen"><span class="pulse">${ic("nfc")}</span><span class="grow">Hold the card to the back of this phone…</span></div>`;
+    reader.onreading = e => useCard(e.serialNumber);
+  }catch(err){ toast(err && err.name === "NotAllowedError" ? "NFC permission was refused" : "This phone can't scan cards here"); }
+}
+function stopPhoneScan(){ if(NFC_ABORT){ NFC_ABORT.abort(); NFC_ABORT = null; } }
+
+async function photoFromFile(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const S = 320, c = document.createElement("canvas"); c.width = c.height = S;
+    const g = c.getContext("2d"), s = Math.min(img.naturalWidth, img.naturalHeight);
+    const sx = (img.naturalWidth - s) / 2, sy = Math.max(0, (img.naturalHeight - s) / 3);   // faces sit a little above centre
+    g.fillStyle = "#fff"; g.fillRect(0, 0, S, S);
+    g.drawImage(img, sx, sy, s, s, 0, 0, S, S);
+    for(let q = .86; q >= .4; q -= .08){ const d = c.toDataURL("image/jpeg", q); if(d.length < 44000) return d; }
+    const c2 = document.createElement("canvas"); c2.width = c2.height = 200; c2.getContext("2d").drawImage(c, 0, 0, 200, 200);
+    return c2.toDataURL("image/jpeg", .6);
+  } finally { URL.revokeObjectURL(url); }
+}
+async function saveWorker(){
+  const val = k => $(k).value.trim();
+  const body = { action: "saveWorker", id: FORM.id, name: val("fwName"), sayName: val("fwSay"), phone: val("fwPhone"), notes: val("fwNotes"),
+    inTime: val("fwIn"), outTime: val("fwOut"), offDay: $("fwOff").querySelector(".on") ? $("fwOff").querySelector(".on").dataset.v : "none",
+    roles: [...$("fwRoles").querySelectorAll("button.on")].map(b => b.dataset.v), leaveDays: val("fwLeave"),
+    leavePer: $("fwPer").querySelector(".on").dataset.v, since: val("fwSince"), card: FORM.card };
+  if(!body.name) return toast("Enter their name");
+  $("fwSave").disabled = true;
+  const r = await api(body);
+  if(r.ok && FORM.photo){
+    const p = await api({ action: "savePhoto", id: r.id, photo: FORM.photo });
+    if(p.ok) PH[r.id] = FORM.photo; else toast(p.message || "Photo not saved");
+  }
+  $("fwSave").disabled = false;
+  if(!r.ok) return toast(r.message || "Not saved");
+  toast(FORM.id ? "Saved" : `${body.name} registered`);
+  closeSheet();
+  await refresh();
+}
+async function removeWorker(id){
+  const w = W(id);
+  if(!confirm(`Remove ${w.name}?\n\nTheir card stops working and they leave the kiosk and the rotation. All past records are kept, and you can restore them later.`)) return;
+  const r = await act({ action: "removeWorker", id }, `${w.name} removed`);
+  if(r.ok) closeSheet();
+}
+async function restoreWorker(id){ await act({ action: "restoreWorker", id }, `${wname(id)} restored`); }
+
+// Guided linking: one person at a time, cards tapped on the kiosk.
+let LINKQ = [];
+function linkFlow(){ LINKQ = active().filter(w => !w.card).map(w => w.id); linkNext(); }
+function linkNext(){
+  stopListening();
+  const id = LINKQ.shift();
+  if(!id){ closeSheet(); refresh(); toast("Cards linked"); return; }
+  const w = W(id);
+  openSheet("Link cards", `<div style="text-align:center;padding:8px 0">${avatar(id, "xl").replace('class="av xl"', 'class="av xl" style="margin:0 auto 12px"')}
+      <h3 style="font-family:var(--display);font-weight:600;font-size:20px">${esc(w.name)}</h3>
+      <div class="listen" style="justify-content:center;margin-top:14px"><span class="pulse">${ic("nfc")}</span>Tap ${esc(w.sayName || w.name)}'s card on the kiosk</div>
+      <p class="sub" style="margin-top:10px">${LINKQ.length ? LINKQ.length + " more after this." : "Last one."}</p></div>`,
+    `<button class="btn ghost" onclick="linkNext()">Skip</button><button class="btn ghost" onclick="LINKQ=[];closeSheet()">Done</button>`);
+  const t0 = Date.now();
+  LISTEN = setInterval(async () => {
+    const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "lastCard", pin: PIN }) }).then(x => x.json()).catch(() => null);
+    const lc = r && r.lastCard;
+    if(lc && lc.card && lc.agoSec * 1000 <= Date.now() - t0 + 4000){
+      stopListening();
+      const k = await api({ action: "linkCard", id, card: lc.card });
+      if(k.ok){ toast(`Linked to ${w.name}`); D.workers.find(x => x.id === id).card = lc.card; linkNext(); }
+      else { toast(k.message); LINKQ.unshift(id); linkNext(); }
+    }
+  }, 2000);
+}
+
+/* ==================================================== PAY */
+function vPay(){
+  const ws = monthWorkers(), adv = {};
+  ws.forEach(w => adv[w.id] = 0);
+  D.advances.forEach(a => { if(adv[a.workerId] != null) adv[a.workerId] += a.amount; });
+  return `<div class="phead"><h1>Pay</h1>${monthNav()}</div>
+    <div class="panel flush"><h2>Salaries</h2>${ws.length ? ws.map(w => {
+      const s = D.salary.find(x => x.workerId === w.id);
+      return `<button class="item" onclick="salarySheet('${w.id}')">${avatar(w.id)}<div class="grow"><div class="nm">${esc(w.name)}</div>
+        <div class="st">${s ? "Saved" : "Not saved yet"}${adv[w.id] ? `, advances ${rs(adv[w.id])}` : ""}</div></div>
+        <b style="font-family:var(--display);font-weight:600;font-size:15px">${s ? rs(s.net) : ""}</b>${ic("chevron-right")}</button>`; }).join("")
+      : `<p class="muted" style="padding:10px 16px">No staff this month.</p>`}</div>
+    <div class="panel"><div class="spread"><h2 style="margin:0">Advances</h2><button class="btn ghost small" onclick="advSheet()">${ic("plus")}Add advance</button></div>
+      ${D.advances.length ? D.advances.map(a => `<div class="item" style="padding:9px 0">${avatar(a.workerId, "s")}<div class="grow"><b>${esc(wname(a.workerId))}</b>
+        <span class="sub">${fmtDay(a.date)}</span><div class="sub">${esc(a.note)}</div></div><b>${rs(a.amount)}</b>
+        <button class="iconbtn" aria-label="Delete advance" onclick="delAdv('${esc(a.id)}')">${ic("trash-2")}</button></div>`).join("")
+      : `<p class="sub" style="margin-top:6px">No advances this month.</p>`}
+      <p class="sub" style="margin-top:8px">Advances are taken off that month's salary automatically. Everything else is up to you. Attendance never changes pay.</p></div>`;
+}
+function salarySheet(id){
+  const w = W(id), s = D.salary.find(x => x.workerId === id) || { basic: "", deductions: 0, bonus: 0, note: "" };
+  const adv = D.advances.filter(a => a.workerId === id).reduce((t, a) => t + a.amount, 0);
+  openSheet(`${w.name}, ${fmtMonth(D.month)}`, `
+    <div class="two"><div><label class="f" for="sb">Basic salary</label><input class="inp" type="number" id="sb" value="${s.basic}"></div>
+      <div><label class="f" for="sd">Deductions</label><input class="inp" type="number" id="sd" value="${s.deductions}"></div></div>
+    <div class="two"><div><label class="f" for="so">Bonus</label><input class="inp" type="number" id="so" value="${s.bonus}"></div>
+      <div><label class="f">Advances (automatic)</label><div class="inp" style="background:var(--mist)">${rs(adv)}</div></div></div>
+    <label class="f" for="sn">Note</label><input class="inp" id="sn" value="${esc(s.note)}">
+    <div class="spread" style="margin-top:16px"><span class="muted">Net salary</span><b id="snet" style="font-family:var(--display);font-size:22px"></b></div>`,
+    `${D.salary.find(x => x.workerId === id) ? `<span class="left"><button class="btn ghost small" onclick="printSlip('${id}')">${ic("printer")}Print slip</button></span>` : ""}
+     <button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveSal('${id}')">Save salary</button>`);
+  const upd = () => { $("snet").textContent = rs((+$("sb").value || 0) - (+$("sd").value || 0) + (+$("so").value || 0) - adv); };
+  ["sb", "sd", "so"].forEach(k => $(k).addEventListener("input", upd)); upd();
+}
+async function saveSal(id){
+  const r = await act({ action: "saveSalary", month: D.month, workerId: id, basic: +$("sb").value || 0, deductions: +$("sd").value || 0,
+                        bonus: +$("so").value || 0, note: $("sn").value }, "Salary saved");
+  if(r.ok) closeSheet();
+}
+function printSlip(id){
+  const s = D.salary.find(x => x.workerId === id);
+  if(!s) return toast("Save the salary first");
+  const days = D.attendance.filter(a => a.workerId === id && a.inTime).length;
+  const lv = D.leaves.filter(l => l.workerId === id);
+  $("printArea").innerHTML = `<div class="slip"><div style="text-align:center;margin-bottom:10px">
+      <div style="font-size:19px;font-weight:800;letter-spacing:.04em">XENON HIGHER EDUCATION INSTITUTE (PVT) LTD</div>
+      <div>Salary slip, ${fmtMonth(D.month)}</div></div>
+    <table><tr><th>Employee</th><td>${esc(wname(id))} (${esc(id)})</td></tr>
+      <tr><th>Days present</th><td>${days}. Leave: ${lv.filter(l => l.type === "full").length} full, ${lv.filter(l => l.type !== "full").length} half</td></tr>
+      <tr><th>Basic salary</th><td>${rs(s.basic)}</td></tr><tr><th>Deductions</th><td>− ${rs(s.deductions)}</td></tr>
+      <tr><th>Bonus</th><td>+ ${rs(s.bonus)}</td></tr><tr><th>Advance payments</th><td>− ${rs(s.advances)}</td></tr>
+      <tr><th style="font-size:16px">Net salary</th><td style="font-size:16px;font-weight:800">${rs(s.net)}</td></tr>
+      ${s.note ? `<tr><th>Note</th><td>${esc(s.note)}</td></tr>` : ""}</table>
+    <div style="display:flex;justify-content:space-between;margin-top:60px"><span>______________________<br>Employee signature</span>
+      <span>______________________<br>Authorised by Kasup Devendra</span></div>
+    <div style="margin-top:24px;font-size:11px;color:#666;text-align:center">Dream ICT | Kasup Devendra | 071 8018 809</div></div>`;
+  document.body.classList.add("printing");
+  setTimeout(() => window.print(), 200);
+}
+window.addEventListener("afterprint", () => document.body.classList.remove("printing"));
+function advSheet(){
+  if(!active().length) return toast("Register staff first");
+  openSheet("Add advance", `<label class="f">Who</label>${pickWorker("adW")}
+    <div class="two"><div><label class="f" for="adD">Date</label><input class="inp" type="date" id="adD" value="${D.today}"></div>
+      <div><label class="f" for="adA">Amount (Rs.)</label><input class="inp" type="number" id="adA" min="0"></div></div>
+    <label class="f" for="adN">Note</label><input class="inp" id="adN" placeholder="Optional">`,
+    `<button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveAdv()">Save advance</button>`);
+  wirePick("adW");
+}
+async function saveAdv(){
+  if(!(+$("adA").value > 0)) return toast("Enter the amount");
+  const r = await act({ action: "addAdvance", workerId: picked("adW"), date: $("adD").value, amount: +$("adA").value, note: $("adN").value }, "Advance added");
+  if(r.ok) closeSheet();
+}
+async function delAdv(id){ if(confirm("Delete this advance?")) await act({ action: "deleteAdvance", id }, "Advance deleted"); }
+
+/* ==================================================== SETTINGS */
+function vSettings(){
+  const roles = activeRoles();
+  return `<div class="phead"><h1>Settings</h1></div>
+    <div class="panel"><div class="spread"><h2 style="margin:0">Job roles</h2><button class="btn ghost small" onclick="roleSheet()">${ic("plus")}Add role</button></div>
+      <p class="sub" style="margin:4px 0 8px">Filled in this order each day. Tick who can do each role in their profile.</p>
+      ${roles.map((r, i) => `<div class="item" style="padding:10px 0">
+        <span class="chip" style="--rc:var(--c-${r.color});padding:8px">${ic(r.icon)}</span>
+        <div class="grow"><b>${esc(r.name)}</b><div class="sub">${r.need === 0 ? "Not used" : r.need + " a day"}${r.extras ? "" : ", no extra people"}</div></div>
+        <button class="iconbtn" aria-label="Move up" ${i === 0 ? "disabled" : ""} onclick="moveRole('${r.id}',-1)">${ic("arrow-up")}</button>
+        <button class="iconbtn" aria-label="Move down" ${i === roles.length - 1 ? "disabled" : ""} onclick="moveRole('${r.id}',1)">${ic("arrow-down")}</button>
+        <button class="iconbtn" aria-label="Edit ${esc(r.name)}" onclick="roleSheet('${r.id}')">${ic("pencil")}</button></div>`).join("")}</div>
+    <div class="panel"><h2>Kiosk code</h2>
+      <div class="spread"><b style="font-family:var(--display);font-size:24px;letter-spacing:.2em">${esc(D.settings.KIOSK_CODE || "—")}</b>
+        <button class="btn ghost small" onclick="codeSheet()">${ic("key-round")}Change</button></div>
+      <p class="sub" style="margin-top:6px">The kiosk phone asks for this once. It keeps other people's phones out of your attendance.</p></div>
+    <div class="panel"><h2>Late grace</h2>
+      <div class="row"><div class="stepper"><button class="iconbtn" onclick="grace(-5)" aria-label="Less">−</button><b id="gr">${esc(D.settings.GRACE_MIN)}</b>
+        <button class="iconbtn" onclick="grace(5)" aria-label="More">+</button></div><span class="muted">minutes</span>
+        <button class="btn small" onclick="saveGrace()">Save</button></div>
+      <p class="sub" style="margin-top:6px">A worker is late when they tap in more than this many minutes after their own in time.</p></div>
+    <div class="panel"><h2>Admin PIN</h2><div class="row"><input class="inp" type="password" id="newPin" placeholder="New PIN" inputmode="numeric" autocomplete="new-password" style="max-width:180px">
+      <button class="btn ghost small" onclick="savePin()">Change PIN</button></div></div>
+    <div class="panel"><div class="spread"><span class="sub">Everything is stored in your Google Sheet, Xenon WMS Data.</span>
+      <button class="btn quiet small" onclick="signOut()">${ic("log-out")}Sign out</button></div></div>`;
+}
+function grace(n){ const b = $("gr"); b.textContent = Math.max(0, Math.min(180, (+b.textContent || 0) + n)); }
+async function saveGrace(){ await act({ action: "updateSettings", values: { GRACE_MIN: $("gr").textContent } }, "Late grace saved"); }
+async function savePin(){
+  const p = $("newPin").value.trim();
+  if(p.length < 4) return toast("Use at least 4 characters");
+  const r = await api({ action: "updateSettings", values: { PIN: p } });
+  if(r.ok){ PIN = p; ss.set("xwms_pin", p); toast("PIN changed"); } else toast(r.message);
+}
+function signOut(){ ss.del("xwms_pin"); location.reload(); }
+function codeSheet(){
+  openSheet("Change kiosk code", `<label class="f" for="kc">New code (4–8 digits)</label>
+    <div class="row"><input class="inp grow" id="kc" inputmode="numeric" maxlength="8" value="${String(100000 + Math.floor(Math.random() * 900000))}">
+    <button class="btn ghost small" onclick="$('kc').value=String(100000+Math.floor(Math.random()*900000))">${ic("rotate-cw")}New</button></div>
+    <p class="sub" style="margin-top:10px">After you save, the kiosk phone will ask for the new code once.</p>`,
+    `<button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveCode()">Save code</button>`);
+}
+async function saveCode(){ const r = await act({ action: "updateSettings", values: { KIOSK_CODE: $("kc").value.trim() } }, "Kiosk code changed"); if(r.ok) closeSheet(); }
+async function moveRole(id, dir){ await act({ action: "moveRole", id, dir }); }
+function roleSheet(id){
+  const r = id ? ROLE(id) : { name: "", need: 1, icon: "clipboard-list", color: "teal", extras: true };
+  openSheet(id ? "Edit role" : "Add a job role", `
+    <label class="f" for="rn">Role name</label><input class="inp" id="rn" value="${esc(r.name)}" maxlength="30" placeholder="e.g. Receptionist">
+    <label class="f">People needed each day</label>
+    <div class="stepper"><button type="button" class="iconbtn" onclick="$('rneed').textContent=Math.max(0,+$('rneed').textContent-1)" aria-label="Fewer">−</button>
+      <b id="rneed">${r.need}</b><button type="button" class="iconbtn" onclick="$('rneed').textContent=Math.min(20,+$('rneed').textContent+1)" aria-label="More">+</button></div>
+    <label class="f">Icon</label>
+    <div class="icons" id="ricon">${D.icons.map(n => `<button type="button" data-v="${n}" class="${n === r.icon ? "on" : ""}" aria-label="${n}">${ic(n)}</button>`).join("")}</div>
+    <label class="f">Colour</label>
+    <div class="swatches" id="rcol">${D.colors.map(c => `<button type="button" data-v="${c}" class="${c === r.color ? "on" : ""}" style="--sw:var(--c-${c})" aria-label="${c}"></button>`).join("")}</div>
+    <label class="switch"><input type="checkbox" id="rext" ${r.extras ? "checked" : ""}><span><b>Extra people can join</b>
+      <span class="sub" style="display:block">When more people are working than places, extras may be added to this role. Turn off for cash handling.</span></span></label>`,
+    `${id ? `<span class="left"><button class="btn danger small" onclick="delRole('${id}')">${ic("trash-2")}Remove</button></span>` : ""}
+     <button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn" onclick="saveRole('${id || ""}')">${id ? "Save role" : "Add role"}</button>`);
+  ["ricon", "rcol"].forEach(k => $(k).addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return;
+    $(k).querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); }));
+}
+async function saveRole(id){
+  const r = await act({ action: "saveRole", id, name: $("rn").value, need: $("rneed").textContent, icon: $("ricon").querySelector(".on").dataset.v,
+                        color: $("rcol").querySelector(".on").dataset.v, extras: $("rext").checked }, id ? "Role saved" : "Role added");
+  if(r.ok) closeSheet();
+}
+async function delRole(id){
+  if(!confirm(`Remove the role "${ROLE(id).name}"?\n\nPast days keep showing it. It won't be planned any more.`)) return;
+  const r = await act({ action: "deleteRole", id }, "Role removed");
+  if(r.ok) closeSheet();
+}
+
+/* ---------------------------------------------------- boot */
+$("loginBtn").addEventListener("click", login);
+$("pin").addEventListener("keydown", e => { if(e.key === "Enter") login(); });
+if(!API_URL){ $("loginErr").textContent = "Setup needed: put your Apps Script URL into config.js."; $("loginBtn").disabled = true; }
+else if(PIN) login();
+</script>
+</body>
+</html>
