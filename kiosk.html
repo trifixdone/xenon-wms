@@ -2,150 +2,297 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-<meta name="theme-color" content="#1c0f33">
-<title>Xenon Attendance Kiosk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#150D30">
+<title>Xenon Kiosk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Unbounded:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="config.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <style>
   :root{
-    --bg:#1c0f33; --panel:#2a1750; --line:#43307a;
-    --ink:#ffffff; --dim:#b9a8e6;
-    --glow:#c9a6ff; --violet:#9d6bff;
-    --ok:#3ddc84; --bad:#ff6b6b; --warn:#ffb547;
+    --night:#150D30; --night2:#24134F; --violet:#6A3DF0; --glow:#C4B5FF; --ice:#7FD4FF;
+    --ink:#F4F0FF; --dim:#A99BD6; --faint:rgba(196,181,255,.14);
+    --mint:#2BD58E; --ember:#FF5A61; --sun:#F5B544;
+    --c-violet:#A88BFF; --c-teal:#2FD0C8; --c-amber:#F4BA4A; --c-rose:#FF7A9A;
+    --c-sky:#5BB8FF; --c-lime:#97D65A; --c-orange:#FF9150; --c-slate:#A6B1C6;
+    --display:"Unbounded",system-ui,sans-serif; --ui:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
-  body{
-    background:radial-gradient(1200px 600px at 50% -200px, #3b1f6e 0%, var(--bg) 60%);
-    color:var(--ink);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    display:flex;flex-direction:column;min-height:100vh;padding:14px;gap:14px;
-  }
-  header{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px}
-  .brand{font-weight:800;letter-spacing:.12em;font-size:15px;text-transform:uppercase}
-  .brand span{color:var(--glow)}
-  #clock{font-variant-numeric:tabular-nums;font-size:15px;color:var(--dim)}
-  #notice{display:none;background:#5a1d1d;border:1px solid #ff6b6b;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4}
+  html{background:var(--night)}
+  body{font-family:var(--ui);color:var(--ink);min-height:100vh;-webkit-tap-highlight-color:transparent}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;
+    background:radial-gradient(120% 70% at 50% 0%, #3A1F7A 0%, var(--night2) 38%, var(--night) 75%)}
+  .ic{width:1em;height:1em;flex:none;vertical-align:-.14em}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  :focus-visible{outline:2px solid var(--glow);outline-offset:3px;border-radius:8px}
 
-  /* duty board */
-  .board{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
-  .board h2{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);padding-bottom:8px;margin-bottom:6px;position:relative}
-  .board h2::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:120px;border-radius:2px;
-    background:linear-gradient(90deg,var(--glow),var(--violet));box-shadow:0 0 12px var(--glow)}
-  .duty{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line)}
-  .duty:last-of-type{border-bottom:0}
-  .duty .who{font-weight:700;font-size:17px}
-  .duty .stat{font-size:13px;color:var(--dim);margin-top:2px}
-  .duty .stat .in{color:var(--ok)} .duty .stat .bad{color:var(--bad);font-weight:700} .duty .stat .out{color:var(--dim)}
-  .duty .what{color:var(--glow);font-weight:700;font-size:16px;text-align:right}
-  .duty .what.none{color:var(--dim);font-weight:500}
-  .duty.dim{opacity:.55}
-  .duty.late .who{color:var(--bad)}
-  .warnline{color:var(--warn);font-size:13px;padding:8px 4px 0}
-  .holiday{color:var(--warn);font-size:18px;font-weight:700;text-align:center;padding:10px 0}
+  /* ---- layout */
+  .app{max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 18px 24px;display:flex;flex-direction:column;gap:18px;min-height:100vh}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .logo{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.02em}
+  .tile{width:34px;height:34px;border-radius:9px;position:relative;display:grid;place-items:center;
+        background:linear-gradient(150deg,#7B54FF,#4423B8);box-shadow:0 0 0 1px rgba(196,181,255,.35) inset}
+  .tile b{font-family:var(--display);font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em}
+  .tile i{position:absolute;top:3px;left:4px;font-style:normal;font-size:7px;font-weight:700;color:var(--glow)}
+  .date{color:var(--dim);font-size:14px;font-weight:500}
 
-  /* scanner */
-  .scanwrap{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;flex:1;display:flex;flex-direction:column;gap:10px}
-  #reader{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden}
-  #reader video{border-radius:12px}
-  .hint{color:var(--dim);text-align:center;font-size:14px}
-  #err{color:var(--bad);text-align:center;font-size:14px;display:none;padding:8px}
-  footer{color:var(--dim);font-size:11px;text-align:center;letter-spacing:.06em}
-
-  /* tap to start */
-  #start{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;cursor:pointer;
-    background:radial-gradient(900px 600px at 50% 20%, #4c1d95 0%, #1c0f33 70%);text-align:center;padding:24px;
-    -webkit-tap-highlight-color:transparent;user-select:none}
-  #start .logo{font-weight:800;letter-spacing:.14em;font-size:18px;margin-bottom:34px}
-  #start .logo span{color:var(--glow)}
-  #start .btn{width:210px;height:210px;border-radius:50%;margin:0 auto 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,#7c3aed,#4c1d95);border:2px solid #a78bfa;box-shadow:0 0 50px rgba(167,139,250,.55);
-    animation:pulse 1.8s ease-in-out infinite}
-  #start .btn b{font-size:30px;line-height:1.15}
-  #start .btn i{font-style:normal;font-size:44px;margin-bottom:6px}
-  #start .small{color:var(--dim);font-size:15px;line-height:1.5}
-  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-
-  /* checking */
-  #checking{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:60;display:none;align-items:center;gap:10px;
-    background:#2a1750;border:1px solid var(--violet);border-radius:40px;padding:12px 20px;font-size:16px;font-weight:600}
-  .spin{width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+  /* ---- hero: clock + xenon ring */
+  .hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding-top:4px}
+  .clock{font-family:var(--display);font-weight:300;font-size:64px;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  .clock small{font-size:18px;font-weight:400;margin-left:6px;color:var(--dim);letter-spacing:0}
+  .greet{color:var(--dim);font-size:17px}
+  .ring{position:relative;width:min(62vw,236px);aspect-ratio:1;margin:16px auto 4px;display:grid;place-items:center;border-radius:50%}
+  .ring svg.halo{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .ring .core{width:58%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;
+              background:radial-gradient(circle at 50% 35%, rgba(196,181,255,.22), rgba(106,61,240,.08) 70%);
+              border:1px solid rgba(196,181,255,.22)}
+  .ring .core .ic{width:46%;height:46%;color:var(--glow);stroke-width:1.6}
+  .arc{transform-origin:120px 120px;animation:spin 7s linear infinite}
+  .breath{animation:breath 3.4s ease-in-out infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes breath{0%,100%{opacity:.55}50%{opacity:1}}
+  .ring.reading .arc{animation-duration:.9s}
+  .tapHint{font-size:18px;font-weight:600;margin-top:6px}
+  .reader{font-size:13.5px;line-height:1.45;color:var(--dim);margin-top:2px;max-width:330px}
+  .reader .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sun);margin-right:7px;vertical-align:1px}
+  .reader.ok .dot{background:var(--mint);box-shadow:0 0 10px var(--mint)}
+  .reader.bad{color:var(--sun)}
 
-  /* result screen: green = good, red = late / early / problem */
-  #banner{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;text-align:center;padding:24px}
-  #banner.show{display:flex}
-  #banner.ok{background:radial-gradient(900px 700px at 50% 30%, #17a35c 0%, #0b5d36 70%)}
-  #banner.bad{background:radial-gradient(900px 700px at 50% 30%, #e0413a 0%, #8b1a1a 70%)}
-  #banner.info{background:radial-gradient(900px 700px at 50% 30%, #6d28d9 0%, #2e1065 70%)}
-  #banner .icon{width:120px;height:120px;border-radius:50%;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;
-    font-size:70px;font-weight:900;background:rgba(255,255,255,.18);border:3px solid rgba(255,255,255,.7)}
-  #banner .big{font-size:48px;font-weight:900;letter-spacing:.06em}
-  #banner .name{font-size:34px;font-weight:800;margin-top:6px}
-  #banner .time{font-size:30px;font-weight:700;margin-top:14px;font-variant-numeric:tabular-nums}
-  #banner .msg{font-size:26px;font-weight:700;margin-top:10px}
-  #banner .dutyl{font-size:20px;margin-top:18px;padding:8px 18px;border-radius:30px;background:rgba(0,0,0,.2);display:inline-block}
-  #banner .dutyl:empty{display:none}
+  /* ---- team */
+  .team{background:rgba(255,255,255,.04);border:1px solid var(--faint);border-radius:22px;padding:6px 14px 10px}
+  .team h2{font-size:15px;font-weight:600;color:var(--dim);padding:12px 2px 6px}
+  .member{display:flex;align-items:center;gap:12px;padding:10px 2px;border-top:1px solid var(--faint)}
+  .member:first-of-type{border-top:0}
+  .av{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;background:#2E1C63;display:grid;place-items:center;
+      font-family:var(--display);font-weight:600;font-size:15px;color:var(--glow);border:2px solid rgba(196,181,255,.25)}
+  .member .who{flex:1;min-width:0}
+  .member .nm{font-weight:700;font-size:16.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .member .st{font-size:13.5px;color:var(--dim);margin-top:1px}
+  .st .in{color:var(--mint)} .st .bad{color:var(--ember);font-weight:600} .st .note{color:var(--sun)}
+  .member.away{opacity:.5}
+  .member.late .av{border-color:var(--ember)}
+  .member.in .av{border-color:var(--mint)}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:13.5px;font-weight:700;white-space:nowrap;
+        color:var(--rc,var(--dim));background:color-mix(in srgb,var(--rc,#fff) 14%,transparent)}
+  .chip.none{font-weight:500;background:transparent;padding-right:0}
+  .warn{display:flex;gap:8px;align-items:flex-start;color:var(--sun);font-size:13.5px;padding:10px 2px 2px}
+  .holiday{text-align:center;padding:22px 6px;color:var(--sun);font-weight:600}
+  .empty{text-align:center;padding:18px 6px;color:var(--dim)}
+  #notice{display:none;background:rgba(255,90,97,.14);border:1px solid rgba(255,90,97,.5);border-radius:14px;padding:11px 13px;font-size:14px;line-height:1.45}
+  footer{margin-top:auto;text-align:center;color:var(--dim);font-size:11.5px;opacity:.75}
+
+  /* ---- full screen layers */
+  .layer{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;
+         background:radial-gradient(120% 80% at 50% 25%, #3A1F7A 0%, var(--night) 72%)}
+  .layer.show{display:flex}
+  .layer .box{max-width:380px;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .layer h1{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.01em}
+  .layer p{color:var(--dim);font-size:15.5px;line-height:1.5}
+  .field{width:100%;font:600 28px var(--display);letter-spacing:.3em;text-align:center;padding:14px;border-radius:16px;color:var(--ink);
+         background:rgba(255,255,255,.06);border:1.5px solid rgba(196,181,255,.3)}
+  .field:focus{outline:none;border-color:var(--glow)}
+  .btn{width:100%;padding:15px;border-radius:16px;font-weight:700;font-size:17px;background:linear-gradient(135deg,#7B54FF,#5A2FE0);color:#fff;
+       box-shadow:0 8px 28px rgba(106,61,240,.45)}
+  .err{color:var(--ember);font-size:14px;min-height:20px}
+  #start .ring{width:min(70vw,260px)}
+  #start .core{flex-direction:column;gap:2px}
+  #start .core b{font-family:var(--display);font-weight:600;font-size:22px;line-height:1.15}
+
+  /* ---- punch result */
+  #punch{--st:var(--glow)}
+  #punch.ok{--st:var(--mint);background:radial-gradient(120% 80% at 50% 28%, #146B4C 0%, #0D2A2C 55%, var(--night) 90%)}
+  #punch.bad{--st:var(--ember);background:radial-gradient(120% 80% at 50% 28%, #7A1E35 0%, #341033 55%, var(--night) 90%)}
+  #punch.info{--st:var(--glow)}
+  #punch.new{--st:var(--sun);background:radial-gradient(120% 80% at 50% 28%, #6B4A12 0%, #2B1A2E 55%, var(--night) 90%)}
+  .pring{position:relative;width:min(64vw,232px);aspect-ratio:1;display:grid;place-items:center;margin-bottom:6px}
+  .pring::before{content:"";position:absolute;inset:0;border-radius:50%;border:5px solid var(--st);
+                 box-shadow:0 0 34px var(--st),inset 0 0 22px color-mix(in srgb,var(--st) 40%,transparent)}
+  .pring img,.pring .ph{width:84%;aspect-ratio:1;border-radius:50%;object-fit:cover;background:#2E1C63;display:grid;place-items:center;
+                        font-family:var(--display);font-weight:600;font-size:56px;color:var(--glow)}
+  .pring .ph .ic{width:44%;height:44%;color:var(--st)}
+  .pname{font-family:var(--display);font-weight:600;font-size:32px;letter-spacing:-.01em;line-height:1.15}
+  .pgreet{font-size:19px;color:#E6DEFF}
+  .ptime{font-family:var(--display);font-weight:300;font-size:46px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:4px}
+  .ptime small{font-size:.42em;font-weight:400;margin-left:4px}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;font-weight:700;font-size:19px;
+        color:#fff;background:color-mix(in srgb,var(--st) 30%,transparent);border:1.5px solid color-mix(in srgb,var(--st) 70%,transparent)}
+  .prole{margin-top:4px}
+  .prole .chip{font-size:16px;padding:8px 14px}
+  .pcard{font:600 17px var(--display);letter-spacing:.06em;padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.08)}
+  .pop{animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{from{transform:scale(.86);opacity:0}to{transform:none;opacity:1}}
+
+  #checking{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;display:none;align-items:center;gap:10px;
+            padding:12px 20px;border-radius:999px;background:#2A1A5C;border:1px solid rgba(196,181,255,.4);font-weight:600}
+  .spin{width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin .8s linear infinite}
+  #toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%);z-index:70;display:none;
+         padding:10px 16px;border-radius:12px;background:#2A1A5C;border:1px solid rgba(196,181,255,.35);font-size:14px;max-width:92vw}
+
+  @media (prefers-reduced-motion: reduce){ .arc,.breath,.pop,.spin{animation:none !important} }
+  @media (min-height:900px){ .clock{font-size:76px} }
 </style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<!-- Icons: Lucide (ISC licence) https://lucide.dev -->
+<symbol id="i-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8.32a7.43 7.43 0 0 1 0 7.36" /> <path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58" /> <path d="M12.91 4.1a15.91 15.91 0 0 1 .01 15.8" /> <path d="M16.37 2a20.16 20.16 0 0 1 0 20" /></symbol>
+<symbol id="i-smartphone-nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="12" x="2" y="6" rx="1" /> <path d="M13 8.32a7.43 7.43 0 0 1 0 7.36" /> <path d="M16.46 6.21a11.76 11.76 0 0 1 0 11.58" /> <path d="M19.91 4.1a15.91 15.91 0 0 1 .01 15.8" /></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /> <path d="M12 2v2" /> <path d="M12 20v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="m17.66 17.66 1.41 1.41" /> <path d="M2 12h2" /> <path d="M20 12h2" /> <path d="m6.34 17.66-1.41 1.41" /> <path d="m19.07 4.93-1.41 1.41" /></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol>
+<symbol id="i-sunrise" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8" /> <path d="m4.93 10.93 1.41 1.41" /> <path d="M2 18h2" /> <path d="M20 18h2" /> <path d="m19.07 10.93-1.41 1.41" /> <path d="M22 22H2" /> <path d="m8 6 4-4 4 4" /> <path d="M16 18a4 4 0 0 0-8 0" /></symbol>
+<symbol id="i-sunset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10V2" /> <path d="m4.93 10.93 1.41 1.41" /> <path d="M2 18h2" /> <path d="M20 18h2" /> <path d="m19.07 10.93-1.41 1.41" /> <path d="M22 22H2" /> <path d="m16 6-4 4-4-4" /> <path d="M16 18a4 4 0 0 0-8 0" /></symbol>
+<symbol id="i-log-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10 17 5-5-5-5" /> <path d="M15 12H3" /> <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></symbol>
+<symbol id="i-log-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5" /> <path d="M21 12H9" /> <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></symbol>
+<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol>
+<symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-volume-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" /></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
+<symbol id="i-lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 9.9-1" /></symbol>
+<symbol id="i-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+<symbol id="i-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4" /> <path d="m18 2 4 4-4 4" /> <path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22" /> <path d="M2 6h1.972a4 4 0 0 1 3.6 2.2" /> <path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45" /></symbol>
+<symbol id="i-calendar-days" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="M8 13h.01" /> <path d="M12 13h.01" /> <path d="M16 13h.01" /> <path d="M8 17h.01" /> <path d="M12 17h.01" /> <path d="M16 17h.01" /></symbol>
+<symbol id="i-tree-palm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4" /> <path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3" /> <path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35" /> <path d="M11 15.5c.5 2.5-.17 4.5-1 6.5h4c2-5.5-.5-12-1-14" /></symbol>
+<symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" /></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
+<symbol id="i-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></symbol>
+<symbol id="i-rotate-cw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></symbol>
+<symbol id="i-id-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 19a4 4 0 00-8 0" /> <path d="M16 10h2" /> <path d="M16 14h2" /> <circle cx="9" cy="12" r="3" /> <rect x="2" y="5" width="20" height="14" rx="2" /></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></symbol>
+<symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></symbol>
+<symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></symbol>
+<symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" /></symbol>
+<symbol id="i-key-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /> <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></symbol>
+<symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="19" x2="19" y1="8" y2="14" /> <line x1="22" x2="16" y1="11" y2="11" /></symbol>
+<symbol id="i-user-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="17" x2="22" y1="8" y2="13" /> <line x1="22" x2="17" y1="8" y2="13" /></symbol>
+<symbol id="i-calendar-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v3" /> <path d="m2 2 20 20" /> <path d="M21 9h-5.5" /> <path d="M3 9h6" /> <path d="M3.586 3.586A2 2 0 003 5v14a2 2 0 002 2h14a2 2 0 001.414-.586" /> <path d="M8.656 3H19a2 2 0 012 2v10.344" /></symbol>
+<symbol id="i-calendar-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="m9 15 2 2 4-4" /></symbol>
+<symbol id="i-badge-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /> <path d="m16 9-5.5 5.5L8 12" /></symbol>
+<symbol id="i-circle-check-big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335" /> <path d="m9 11 3 3L22 4" /></symbol>
+<symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14" /> <path d="M5 2h14" /> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></symbol>
+<symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 16v-4" /> <path d="M12 8h.01" /></symbol>
+<symbol id="i-wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /></symbol>
+<symbol id="i-image-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 5h6" /> <path d="M19 2v6" /> <path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /> <circle cx="9" cy="9" r="2" /></symbol>
+<symbol id="i-credit-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></symbol>
+<symbol id="i-user-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5" /> <path d="M20 21a8 8 0 0 0-16 0" /></symbol>
+<symbol id="i-scan-line" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <path d="M7 12h10" /></symbol>
+<symbol id="i-banknote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01M18 12h.01" /></symbol>
+<symbol id="i-hand-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" /> <path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" /> <path d="m2 16 6 6" /> <circle cx="16" cy="9" r="2.9" /> <circle cx="6" cy="5" r="3" /></symbol>
+<symbol id="i-ticket-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-clipboard-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" /></symbol>
+<symbol id="i-headset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z" /> <path d="M21 16v2a4 4 0 0 1-4 4h-5" /></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16" /> <path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z" /></symbol>
+<symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" /> <path d="M20.054 15.987H3.946" /></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
+<symbol id="i-notebook-pen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-coffee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v2" /> <path d="M14 2v2" /> <path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" /> <path d="M6 2v2" /></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></symbol>
+</svg>
 
-<header>
-  <div class="brand">XENON <span>ATTENDANCE</span></div>
-  <div id="clock">--:--</div>
-</header>
+<div class="app">
+  <header class="top">
+    <div class="logo"><span class="tile"><i>54</i><b>Xe</b></span>Xenon</div>
+    <div class="date" id="date"></div>
+  </header>
 
-<div id="notice"></div>
+  <div id="notice"></div>
 
-<section class="board">
-  <h2>Today's Duties</h2>
-  <div id="duties"><div class="hint">Loading…</div></div>
-</section>
+  <section class="hero">
+    <div class="clock" id="clock">--:--</div>
+    <div class="greet" id="greet"></div>
+    <button class="ring" id="ring" aria-label="Card reader">
+      <svg class="halo" viewBox="0 0 240 240" aria-hidden="true">
+        <defs>
+          <linearGradient id="xg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#C4B5FF"/><stop offset=".55" stop-color="#8A63FF"/><stop offset="1" stop-color="#7FD4FF"/>
+          </linearGradient>
+          <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>
+        </defs>
+        <circle class="breath" cx="120" cy="120" r="104" fill="none" stroke="url(#xg)" stroke-width="10" filter="url(#glow)"/>
+        <circle cx="120" cy="120" r="104" fill="none" stroke="url(#xg)" stroke-width="3"/>
+        <circle class="arc" cx="120" cy="120" r="104" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-dasharray="46 608" opacity=".9"/>
+      </svg>
+      <span class="core"><svg class="ic"><use href="#i-nfc"/></svg></span>
+    </button>
+    <div class="tapHint">Tap your card</div>
+    <div class="reader" id="reader"><span class="dot"></span><span id="readerText">Starting the card reader…</span></div>
+  </section>
 
-<section class="scanwrap">
-  <div id="reader"></div>
-  <div class="hint">Show your QR card to the camera</div>
-  <div id="err"></div>
-</section>
+  <section class="team" aria-live="polite">
+    <h2>Today's team</h2>
+    <div id="team"><div class="empty">Loading…</div></div>
+  </section>
 
-<footer>Dream ICT · Kasup Devendra · 071 8018 809</footer>
+  <footer>Xenon Higher Education Institute, Kalutara</footer>
+</div>
 
-<div id="start" role="button" tabindex="0" aria-label="Tap to start">
-  <div>
-    <div class="logo">XENON <span>ATTENDANCE</span></div>
-    <div class="btn"><i>👆</i><b>Tap to<br>start</b></div>
-    <div class="small">Turns on the camera and the voice.<br>Needed once each time this page opens.</div>
+<!-- kiosk code (once per device) -->
+<div class="layer" id="gate">
+  <div class="box">
+    <span class="tile" style="width:54px;height:54px;border-radius:14px"><i style="font-size:9px;top:5px;left:6px">54</i><b style="font-size:22px">Xe</b></span>
+    <h1>Set up this kiosk</h1>
+    <p>Enter the kiosk code. You'll find it in Admin, under Settings.</p>
+    <input class="field" id="codeInput" inputmode="numeric" autocomplete="off" maxlength="8" aria-label="Kiosk code">
+    <div class="err" id="codeErr"></div>
+    <button class="btn" id="codeBtn">Unlock kiosk</button>
   </div>
+</div>
+
+<!-- tap to start (browsers need one tap before sound and NFC) -->
+<div class="layer" id="start" role="button" tabindex="0" aria-label="Tap to start">
+  <div class="box">
+    <div class="ring">
+      <svg class="halo" viewBox="0 0 240 240" aria-hidden="true">
+        <circle class="breath" cx="120" cy="120" r="104" fill="none" stroke="url(#xg)" stroke-width="10" filter="url(#glow)"/>
+        <circle cx="120" cy="120" r="104" fill="none" stroke="url(#xg)" stroke-width="3"/>
+      </svg>
+      <span class="core"><b>Tap to<br>start</b></span>
+    </div>
+    <p>Starts the card reader and the voice, and keeps the screen on. Needed each time this page opens.</p>
+  </div>
+</div>
+
+<!-- punch result -->
+<div class="layer" id="punch" aria-live="assertive">
+  <div class="box pop" id="pbox"></div>
 </div>
 
 <div id="checking"><div class="spin"></div>Checking card…</div>
-
-<div id="banner" aria-live="assertive">
-  <div>
-    <div class="icon" id="bIcon"></div>
-    <div class="big" id="bBig"></div>
-    <div class="name" id="bName"></div>
-    <div class="time" id="bTime"></div>
-    <div class="msg" id="bMsg"></div>
-    <div class="dutyl" id="bDuty"></div>
-  </div>
-</div>
+<div id="toast"></div>
 
 <script>
 /* The Apps Script URL is set once in config.js (same folder). */
 const API_URL = String(window.XENON_API_URL || "").trim();
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ic = (name, cls) => `<svg class="ic ${cls || ""}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const store = {
+  get(k){ try{ return localStorage.getItem(k) || ""; }catch(e){ return ""; } },
+  set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
 
-let started = false, busy = false, lastScan = { code: null, t: 0 };
+let CODE = store.get("xenon_kiosk_code");
+let started = false, busy = false, last = { card: "", t: 0 };
 let actx = null, VOICE = null, wakeLock = null;
+let PHOTOS = {}, photoVer = null, BOARD = null;
 
 function api(payload){
-  return fetch(API_URL, { method: "POST", body: JSON.stringify(payload) }).then(r => r.json());
+  return fetch(API_URL, { method: "POST", body: JSON.stringify(Object.assign({ kiosk: CODE }, payload)) }).then(r => r.json());
 }
 
-/* ---------- time helpers ---------- */
+/* ---------------- time ---------------- */
 function fmt12(hhmm){
   if(!hhmm) return "";
   let [h, m] = String(hhmm).split(":").map(Number);
@@ -153,31 +300,30 @@ function fmt12(hhmm){
   h = h % 12 || 12;
   return h + ":" + String(m).padStart(2, "0") + " " + ap;
 }
-function greet(){
-  const h = new Date().getHours();
+function greeting(d = new Date()){
+  const h = d.getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 function tick(){
-  const n = new Date();
-  $("clock").textContent = n.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) +
-    "  " + fmt12(String(n.getHours()) + ":" + String(n.getMinutes()));
+  const n = new Date(), t = fmt12(n.getHours() + ":" + n.getMinutes()).split(" ");
+  $("clock").innerHTML = t[0] + "<small>" + t[1] + "</small>";
+  $("greet").textContent = greeting(n);
+  $("date").textContent = n.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
-setInterval(tick, 10000); tick();
+setInterval(tick, 5000); tick();
 
-/* ---------- sound & voice ---------- */
+/* ---------------- sound & voice ---------------- */
 function unlockAudio(){
-  try{
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    if(actx.state === "suspended") actx.resume();
-  }catch(e){}
+  try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if(actx.state === "suspended") actx.resume(); }catch(e){}
 }
 function tone(freq, secs, vol){
   if(!actx) return;
   try{
     const o = actx.createOscillator(), g = actx.createGain();
-    o.connect(g); g.connect(actx.destination);
-    o.frequency.value = freq; g.gain.value = vol || .12;
-    o.start(); o.stop(actx.currentTime + secs);
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || .14, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + secs);
+    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + secs);
   }catch(e){}
 }
 function pickVoice(){
@@ -187,173 +333,234 @@ function pickVoice(){
           vs.find(v => /^en[-_]IN/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
 }
 if("speechSynthesis" in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
-
 function speak(text, done){
   let finished = false;
   const fin = () => { if(!finished){ finished = true; if(done) done(); } };
+  window.__lastSpoken = text;
   if(!text || !("speechSynthesis" in window)){ setTimeout(fin, 2500); return; }
   try{
-    speechSynthesis.cancel();
-    speechSynthesis.resume();
+    speechSynthesis.cancel(); speechSynthesis.resume();
     const u = new SpeechSynthesisUtterance(text);
     if(VOICE){ u.voice = VOICE; u.lang = VOICE.lang; } else u.lang = "en-US";
-    u.rate = 0.95; u.pitch = 1; u.volume = 1;
-    u.onend = fin; u.onerror = fin;
+    u.rate = .95; u.onend = fin; u.onerror = fin;
     speechSynthesis.speak(u);
-    setTimeout(fin, 9000);               // never wait forever
+    setTimeout(fin, 10000);
   }catch(e){ setTimeout(fin, 2500); }
 }
-
-async function keepAwake(){
-  try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
-}
+async function keepAwake(){ try{ if("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); }catch(e){} }
 document.addEventListener("visibilitychange", () => {
   if(document.visibilityState === "visible" && started){ keepAwake(); loadBoard(); }
 });
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(() => t.style.display = "none", 3500); }
 
-/* ---------- duty board ---------- */
-function checkVersion(d){
-  if(d && d.api >= 2) { $("notice").style.display = "none"; return; }
-  $("notice").style.display = "block";
-  $("notice").innerHTML = "<b>The Apps Script is still the old version.</b> In Apps Script: Deploy → Manage deployments → ✎ → Version: <b>New version</b> → Deploy.";
+/* ---------------- card readers ---------------- */
+function readerState(kind, text){
+  const r = $("reader");
+  r.className = "reader " + (kind || "");
+  $("readerText").textContent = text;
 }
+async function startNfc(){
+  if(!("NDEFReader" in window)){
+    readerState("bad", "No NFC in this browser. Use Chrome on an Android phone with NFC, or plug in a USB card reader.");
+    return;
+  }
+  try{
+    const reader = new NDEFReader();
+    await reader.scan();
+    reader.onreading = e => onCard(e.serialNumber || textOf(e.message), "nfc");
+    reader.onreadingerror = () => toast("Couldn't read that card. Hold it still on the back of the phone.");
+    readerState("ok", "Card reader on. Hold the card flat on the back of the phone.");
+  }catch(err){
+    if(err && err.name === "NotAllowedError") readerState("bad", "NFC was blocked. Tap the lock icon in the address bar and allow NFC.");
+    else if(err && err.name === "NotReadableError") readerState("bad", "NFC is off. Turn on NFC in the phone's settings, then reload.");
+    else readerState("bad", "Card reader could not start: " + (err && err.message ? err.message : err));
+  }
+}
+function textOf(message){
+  try{
+    for(const rec of (message && message.records) || []){
+      if(rec.recordType === "text") return new TextDecoder(rec.encoding || "utf-8").decode(rec.data);
+    }
+  }catch(e){}
+  return "";
+}
+// USB card readers type the card number like a keyboard, usually followed by Enter.
+let kb = "", kbLast = 0, kbTimer = null;
+document.addEventListener("keydown", e => {
+  if(!started || e.target.tagName === "INPUT") return;
+  const now = Date.now();
+  if(now - kbLast > 400) kb = "";
+  kbLast = now;
+  clearTimeout(kbTimer);
+  if(e.key === "Enter"){ if(kb.length >= 4) onCard(kb, "usb"); kb = ""; return; }
+  if(/^[0-9A-Za-z]$/.test(e.key)) kb += e.key;
+  kbTimer = setTimeout(() => { if(kb.length >= 8) onCard(kb, "usb"); kb = ""; }, 300);
+});
 
+/* ---------------- board ---------------- */
+function checkVersion(d){
+  if(d && d.api >= 3){ $("notice").style.display = "none"; return; }
+  $("notice").style.display = "block";
+  $("notice").innerHTML = "<b>The Apps Script is still an old version.</b> In Apps Script: Deploy → Manage deployments → ✎ → Version: <b>New version</b> → Deploy.";
+}
 async function loadBoard(){
-  if(!API_URL) return;
+  if(!API_URL || !CODE) return;
   try{
     const d = await api({ action: "board" });
     checkVersion(d);
-    if(d.ok) renderBoard(d);
+    if(d.needCode){ askCode("The kiosk code has changed. Enter the new code."); return; }
+    if(!d.ok) return;
+    BOARD = d;
+    if(d.photoVer !== photoVer) await loadPhotos(d.photoVer);
+    renderBoard(d);
   }catch(e){ /* retried every minute */ }
 }
 setInterval(loadBoard, 60000);
-
-// rows from an old (v1) backend, so the board still works until the new version is deployed
-function legacyRows(d){
-  const du = d.duties || {}, att = d.attendance || {}, lv = {};
-  (d.leaves || []).forEach(l => { lv[l.workerId] = l.type; });
-  const mk = (x, duty, off) => { const a = att[x.workerId] || {};
-    return { workerId: x.workerId, name: x.name, duty, off: lv[x.workerId] === "full" ? "Leave" : off, inTime: a.inTime || "",
-             outTime: a.outTime || "", late: !!a.late, early: !!a.early, half: lv[x.workerId] === "half" }; };
-  return (du.list || []).map(x => mk(x, x.duty, "")).concat((du.off || []).map(x => mk(x, "", x.reason)));
+async function loadPhotos(ver){
+  try{ const r = await api({ action: "photos" }); if(r.ok){ PHOTOS = r.photos || {}; photoVer = ver; } }catch(e){}
 }
-
+function initials(name){ return String(name || "?").split(/\s+/).map(s => s[0]).join("").slice(0, 2).toUpperCase(); }
+function avatar(id, name, cls){
+  return PHOTOS[id] ? `<img class="${cls}" src="${PHOTOS[id]}" alt="">` : `<span class="${cls}">${esc(initials(name))}</span>`;
+}
+function roleChip(role){
+  if(!role) return `<span class="chip none">No duty</span>`;
+  return `<span class="chip" style="--rc:var(--c-${esc(role.color)})">${ic(role.icon)}${esc(role.name)}</span>`;
+}
+function statusLine(r){
+  if(r.off && !r.inTime) return r.off === "Leave" ? "On leave today" : r.off === "Weekly off" ? "Weekly off" : esc(r.off);
+  let s = "";
+  if(r.inTime) s = `<span class="${r.late ? "bad" : "in"}">${r.late ? "Late, in" : "In"} ${fmt12(r.inTime)}</span>`;
+  else s = r.half === "am" ? `<span class="note">Morning off, comes at ${fmt12(r.expectedIn)}</span>` : "Not in yet";
+  if(r.outTime) s += `, <span class="${r.early ? "bad" : ""}">${r.early ? "left early" : "out"} ${fmt12(r.outTime)}</span>`;
+  else if(r.half === "pm") s += `, <span class="note">leaves at ${fmt12(r.expectedOut)}</span>`;
+  return s;
+}
 function renderBoard(d){
-  const box = $("duties");
-  const holiday = d.holiday || (d.duties && d.duties.holiday);
-  if(holiday){ box.innerHTML = '<div class="holiday">🌙 Holiday — ' + esc(holiday) + '</div>'; return; }
-  const rows = d.rows || legacyRows(d);
-  if(!rows.length){ box.innerHTML = '<div class="hint">No workers yet — add them in Admin → Workers.</div>'; return; }
-  box.innerHTML = rows.map(r => {
-    let stat;
-    if(r.off && !r.inTime) stat = r.off === "Leave" ? "On leave" : esc(r.off);
-    else if(r.inTime){
-      stat = '<span class="' + (r.late ? "bad" : "in") + '">IN ' + fmt12(r.inTime) + (r.late ? " · Late" : "") + "</span>";
-      if(r.outTime) stat += ' · <span class="' + (r.early ? "bad" : "out") + '">OUT ' + fmt12(r.outTime) + (r.early ? " · Early" : "") + "</span>";
-    } else stat = "not in yet";
-    if(r.half) stat += " · ½ day leave";
-    const duty = r.off ? "Off" : (r.duty || "No duty");
-    const cls = "duty" + (r.off && !r.inTime ? " dim" : "") + (r.late ? " late" : "");
-    return '<div class="' + cls + '"><div><div class="who">' + esc(r.name) + '</div><div class="stat">' + stat +
-           '</div></div><div class="what' + (r.duty ? "" : " none") + '">' + esc(duty) + "</div></div>";
-  }).join("") + (d.warnings || []).map(w => '<div class="warnline">⚠ ' + esc(w) + "</div>").join("");
+  const box = $("team");
+  if(d.holiday){ box.innerHTML = `<div class="holiday">${ic("sparkles")} Holiday: ${esc(d.holiday)}</div>`; return; }
+  if(!d.rows.length){ box.innerHTML = `<div class="empty">No staff yet. Register them in Admin, under Staff.</div>`; return; }
+  box.innerHTML = d.rows.map(r => {
+    const cls = "member" + (r.off && !r.inTime ? " away" : "") + (r.late ? " late" : r.inTime ? " in" : "");
+    return `<div class="${cls}">${avatar(r.workerId, r.name, "av")}
+      <div class="who"><div class="nm">${esc(r.name)}</div><div class="st">${statusLine(r)}</div></div>
+      ${r.off && !r.inTime ? "" : roleChip(r.role)}</div>`;
+  }).join("") + (d.warnings || []).map(w => `<div class="warn">${ic("triangle-alert")}<span>${esc(w)}</span></div>`).join("");
 }
 
-/* ---------- scan result ---------- */
+/* ---------------- punch ---------------- */
 function feedback(r){
-  const name = r.name || "";
-  if(r.event === "NET") return { cls: "bad", icon: "✕", big: "No connection", msg: "Check the internet and try again",
-                                 say: "No connection. Please try again." };
-  if(!r.ok){
-    if(r.event === "INACTIVE") return { cls: "bad", icon: "✕", big: "Card not active", name, msg: "Please see the office",
-                                        say: "This card is not active." };
-    return { cls: "bad", icon: "✕", big: "Card not recognised", msg: r.message && r.event !== "UNKNOWN" ? r.message : "Please try again",
-             say: "Card not recognised. Please try again." };
-  }
-  const t = fmt12(r.time);
-  if(r.event === "IN"){
-    const late = !!r.late;
-    return { cls: late ? "bad" : "ok", icon: late ? "!" : "✓", big: "IN", name, time: t,
-             msg: late ? "You are late" : "You are on time", duty: r.duty ? "Today: " + r.duty : "",
-             say: greet() + " " + name + ". In time " + t + ". " + (late ? "You are late." : "You are on time.") };
-  }
-  if(r.event === "OUT"){
-    const early = !!r.early;
-    return { cls: early ? "bad" : "ok", icon: early ? "!" : "✓", big: "OUT", name, time: t + (r.updated ? " (updated)" : ""),
-             msg: early ? "You are leaving early" : "Thank you",
-             say: "Goodbye " + name + ". Out time " + t + ". " + (early ? "You are leaving early." : "Thank you.") };
-  }
-  if(r.event === "ALREADY_IN") return { cls: "info", icon: "✓", big: "Already in", name, time: "since " + t,
-                                        say: name + ", you are already checked in." };
-  return { cls: "bad", icon: "✕", big: "Scan failed", msg: "Please try again", say: "Please try again." };
+  const say = r.sayName || r.name || "";
+  if(r.event === "NET") return { cls: "bad", icon: "wifi-off", title: "No connection", pill: ["wifi-off", "Try again"], say: "No connection. Please try again." };
+  if(r.event === "UNKNOWN") return { cls: "new", icon: "credit-card", title: "New card", text: "This card isn't linked to anyone yet. Link it in Admin, under Staff.",
+                                     card: r.card, say: "This card is not registered." };
+  if(r.event === "INACTIVE") return { cls: "bad", id: r.workerId, name: r.name, title: r.name, pill: ["user-x", "Card not active"],
+                                      text: "Please see the office.", say: "This card is not active." };
+  if(!r.ok) return { cls: "bad", icon: "triangle-alert", title: "Try again", text: r.message || "", say: "Please try again." };
+  const t = fmt12(r.time), g = greeting();
+  if(r.event === "IN") return {
+    cls: r.late ? "bad" : "ok", id: r.workerId, name: r.name, title: r.name, greet: g, time: t,
+    pill: r.late ? ["hourglass", "You're late"] : ["circle-check-big", "You're on time"], role: r.role,
+    say: `${g} ${say}. In time ${t}. ${r.late ? "You are late." : "You are on time."}` };
+  if(r.event === "OUT") return {
+    cls: r.early ? "bad" : "ok", id: r.workerId, name: r.name, title: r.name, greet: "Goodbye", time: t,
+    pill: r.early ? ["log-out", "Leaving early"] : ["sun", "Have a good day"],
+    say: `Goodbye ${say}. Out time ${t}. ${r.early ? "You are leaving early. Have a good day." : "Have a good day."}` };
+  if(r.event === "ALREADY_IN") return { cls: "info", id: r.workerId, name: r.name, title: r.name, greet: "Already checked in", time: t,
+                                        pill: ["check", "You're in"], say: `${say}, you are already checked in.` };
+  return { cls: "bad", icon: "triangle-alert", title: "Try again", say: "Please try again." };
 }
-
-function showResult(f){
-  const b = $("banner");
-  $("bIcon").textContent = f.icon; $("bBig").textContent = f.big; $("bName").textContent = f.name || "";
-  $("bTime").textContent = f.time || ""; $("bMsg").textContent = f.msg || ""; $("bDuty").textContent = f.duty || "";
-  b.className = "show " + f.cls;
-  window.__lastSpoken = f.say;
-  const shownAt = Date.now();
+function showPunch(f){
+  const pic = f.id ? (PHOTOS[f.id] ? `<img src="${PHOTOS[f.id]}" alt="">` : `<span class="ph">${esc(initials(f.name))}</span>`)
+                   : `<span class="ph">${ic(f.icon || "nfc")}</span>`;
+  const tp = (f.time || "").split(" ");
+  $("pbox").innerHTML = `<div class="pring">${pic}</div>
+    ${f.greet ? `<div class="pgreet">${esc(f.greet)}</div>` : ""}
+    <div class="pname">${esc(f.title)}</div>
+    ${f.time ? `<div class="ptime">${esc(tp[0])}<small>${esc(tp[1] || "")}</small></div>` : ""}
+    ${f.pill ? `<div class="pill">${ic(f.pill[0])}${esc(f.pill[1])}</div>` : ""}
+    ${f.role ? `<div class="prole">${roleChip(f.role)}</div>` : ""}
+    ${f.text ? `<p>${esc(f.text)}</p>` : ""}
+    ${f.card ? `<div class="pcard">${esc(f.card.match(/.{1,4}/g).join(" "))}</div>` : ""}`;
+  const p = $("punch");
+  p.className = "layer show " + f.cls;
+  $("pbox").classList.remove("pop"); void $("pbox").offsetWidth; $("pbox").classList.add("pop");
+  const shown = Date.now();
   let closed = false;
   const close = () => {
     if(closed) return; closed = true;
-    setTimeout(() => { b.className = ""; busy = false; }, Math.max(0, 3500 - (Date.now() - shownAt)));
+    setTimeout(() => { p.className = "layer"; busy = false; }, Math.max(0, 3800 - (Date.now() - shown)));
   };
-  speak(f.say, () => setTimeout(close, 400));
-  setTimeout(close, 10000);
+  speak(f.say, () => setTimeout(close, 500));
+  setTimeout(close, 11000);
 }
-
-async function onScan(code){
+async function onCard(raw, via){
+  const card = String(raw || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+  if(!card || busy) return;
   const now = Date.now();
-  if(busy) return;
-  if(lastScan.code === code && now - lastScan.t < 15000) return;   // same card held in front of the camera
-  lastScan = { code, t: now };
+  if(card === last.card && now - last.t < 15000) return;       // card still resting on the phone
+  last = { card, t: now };
   busy = true;
-  tone(1320, .07, .15);                                              // "got it" click
+  tone(1320, .09, .16);
+  $("ring").classList.add("reading");
   $("checking").style.display = "flex";
   let r;
-  try{ r = await api({ action: "scan", code }); }
+  try{ r = await api({ action: "punch", card }); }
   catch(e){ r = { ok: false, event: "NET" }; }
   $("checking").style.display = "none";
+  $("ring").classList.remove("reading");
   checkVersion(r);
-  showResult(feedback(r));
+  if(r.needCode){ busy = false; askCode("The kiosk code has changed. Enter the new code."); return; }
+  if(r.ok && r.event === "IN" && BOARD && BOARD.photoVer !== photoVer) await loadPhotos(BOARD.photoVer);
+  showPunch(feedback(r));
   loadBoard();
 }
 
-function startScanner(){
-  if(typeof Html5Qrcode === "undefined"){ showErr("Scanner could not load — check the internet and reload the page."); return; }
-  const scanner = new Html5Qrcode("reader");
-  scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 230, height: 230 } },
-                text => onScan(String(text).trim()), () => {})
-    .catch(err => showErr("Camera not available: " + err + " — allow camera access for this page in Chrome settings."));
+/* ---------------- kiosk code & start ---------------- */
+function askCode(msg){
+  $("gate").classList.add("show");
+  $("codeErr").textContent = msg || "";
+  setTimeout(() => $("codeInput").focus(), 50);
 }
-function showErr(msg){ const e = $("err"); e.style.display = "block"; e.textContent = msg; }
+async function submitCode(){
+  const c = $("codeInput").value.trim();
+  if(!/^\d{4,8}$/.test(c)){ $("codeErr").textContent = "Enter the 4 to 8 digit code."; return; }
+  $("codeBtn").disabled = true; $("codeErr").textContent = "Checking…";
+  try{
+    const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "kioskCheck", kiosk: c }) }).then(x => x.json());
+    checkVersion(r);
+    if(r.ok){ CODE = c; store.set("xenon_kiosk_code", c); $("gate").classList.remove("show"); if(!started) $("start").classList.add("show"); else loadBoard(); }
+    else $("codeErr").textContent = r.needCode ? "That code is not right." : (r.message || "Could not check the code.");
+  }catch(e){ $("codeErr").textContent = "No connection. Check the internet."; }
+  $("codeBtn").disabled = false;
+}
+$("codeBtn").addEventListener("click", submitCode);
+$("codeInput").addEventListener("keydown", e => { if(e.key === "Enter") submitCode(); });
 
-/* ---------- start (one tap unlocks sound, voice and camera) ---------- */
 function start(){
   if(started) return;
   started = true;
-  $("start").style.display = "none";
+  $("start").classList.remove("show");
   unlockAudio();
-  if(!API_URL){ showErr("Setup needed: put your Apps Script URL into config.js."); return; }
   speak("Ready");
   keepAwake();
+  startNfc();
   loadBoard();
-  startScanner();
 }
 $("start").addEventListener("click", start);
 $("start").addEventListener("keydown", e => { if(e.key === "Enter" || e.key === " ") start(); });
+$("ring").addEventListener("click", () => toast("Hold your card flat against the back of the phone for a second."));
 
-/* refresh the board just after midnight */
-(function(){
-  const n = new Date();
-  const ms = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 30) - n;
-  setTimeout(() => { loadBoard(); setInterval(loadBoard, 86400000); }, ms);
+(function midnight(){
+  const n = new Date(), ms = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 30) - n;
+  setTimeout(() => { loadBoard(); midnight(); }, ms);
 })();
 
-if(!API_URL) $("duties").innerHTML = '<div class="hint">Setup needed: put your Apps Script URL into config.js.</div>';
-else loadBoard();
+if(!API_URL){
+  $("team").innerHTML = `<div class="empty">Setup needed: put your Apps Script URL into config.js.</div>`;
+  readerState("bad", "Setup needed");
+}else if(!CODE) askCode();
+else { $("start").classList.add("show"); loadBoard(); }
 </script>
 </body>
 </html>
